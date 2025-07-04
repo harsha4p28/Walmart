@@ -1,0 +1,110 @@
+* {
+  margin: 0;
+  padding: 0;
+  color: white;
+  box-sizing: border-box;
+}
+
+.Nav {
+  height: 100px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #395dbe;
+  padding: 0 30px;
+}
+
+.logo img {
+  height: 100px;
+}
+
+.List {
+  list-style: none;
+  display: flex;
+  gap: 90px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.List li {
+  cursor: pointer;
+  
+}
+a{
+    text-decoration: none;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 15px;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .Nav {
+    height: auto;
+    padding: 15px;
+    gap: 20px;
+  }
+
+  .List {
+    
+    gap: 20px;
+  }
+
+  .profile {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 630px) {
+  .Nav {
+    height: auto;
+    padding: 15px;
+    gap: 20px;
+  }
+
+  .List {
+    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .profile {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 425px) {
+  .Nav {
+    flex-direction: column;
+    height: auto;
+    padding: 15px;
+    gap: 20px;
+  }
+
+  .List {
+    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .profile {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
