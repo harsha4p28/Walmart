@@ -1,0 +1,13 @@
+# React - ignore node_modules and build
+frontend/node_modules/
+frontend/build/
+
+# Python - ignore virtual environment and compiled files
+backend/venv/
+backend/__pycache__/
+
+# Ignore environment files
+.env
+
+# macOS system file (safe to include)
+.DS_Store
