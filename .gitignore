@@ -8,6 +8,8 @@ backend/__pycache__/
 
 # Ignore environment files
 .env
+backend/.env
+
 
 # macOS system file (safe to include)
 .DS_Store

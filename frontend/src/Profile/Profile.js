@@ -1,8 +1,28 @@
 import React from "react";
 import Navbar from "../Navbar/Navbar";
 import "./Profile.css";
+import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
+  const navigate=useNavigate()
+  const handleLogOut = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (response.ok) { 
+                navigate('/');
+                window.location.reload();
+            } else {
+                console.error("Failed to log out on the backend");
+            }
+        } catch (error) {
+            console.error("Error logging out:", error);
+        }
+    };
+  
+  
   return (
     <>
       <Navbar />
@@ -50,6 +70,7 @@ export default function Profile() {
           </div>
 
           <button className="edit-btn">Edit Profile</button>
+          <button className="edit-btn" onClick={handleLogOut}>Logout</button>
         </div>
       </div>
     </>
