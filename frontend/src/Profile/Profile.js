@@ -25,7 +25,6 @@ export default function Profile() {
   
   return (
     <>
-      <Navbar />
       <div className="profile-page">
         <div className="sidebar">
           <h3>Settings</h3>

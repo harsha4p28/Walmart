@@ -2,7 +2,7 @@ import React, { useState ,useEffect} from "react";
 import Navbar from "../Navbar/Navbar";
 import './Login.css';
 import login_logo from "../assets/login_logo.png";
-import { useNavigate } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 
 export default function Login({setUserLoggedin}) {
     const [formData, setFormData] = useState({
@@ -57,8 +57,6 @@ export default function Login({setUserLoggedin}) {
 
     return (
         <div className="page-container">
-            <Navbar />
-
             <form onSubmit={handleLogin}>
                 <div className="login-container">
                     <div className="login-logo">
@@ -94,6 +92,7 @@ export default function Login({setUserLoggedin}) {
                     <button className="submit-btn" disabled={loading}>
                         {loading ? "Logging in..." : "Continue"}
                     </button>
+                    <p>Don’t have an account? <Link to="/Register" className="login-link">Register</Link></p>
                 </div>
             </form>
 

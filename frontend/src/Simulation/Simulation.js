@@ -42,8 +42,6 @@ export default function Simulation() {
   return (
     <>
       <div className="page-container">
-        <Navbar />
-
         <form onSubmit={handleSubmit}>
           <div className="Simulation-container">
             <h2 style={{ textAlign: "center" }}>Map It Before You Move It!</h2>

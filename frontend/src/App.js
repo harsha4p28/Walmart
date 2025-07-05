@@ -1,5 +1,6 @@
 import {React ,  useEffect, useState} from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './Navbar/Navbar';
 import Home from './Home/Home';
 import Login from './Login/Login';
 import Register from './Register/Register';
@@ -46,6 +47,7 @@ function App() {
 
   return (
     <Router>
+      <Navbar/>
       <Routes>
         <Route path='/' element={userLoggedin ? <Dashboard /> : <Home />} />
         <Route path="/Register" element={<Register />} />

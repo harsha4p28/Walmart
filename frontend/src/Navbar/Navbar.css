@@ -1,7 +1,6 @@
 * {
   margin: 0;
   padding: 0;
-  color: white;
   box-sizing: border-box;
 }
 
@@ -31,7 +30,8 @@
   
 }
 a{
-    text-decoration: none;
+  text-decoration: none;
+  color: white;
 }
 
 .icon-button {
@@ -50,6 +50,7 @@ a{
   gap: 20px;
   font-weight: 500;
   font-size: 1.1rem;
+  color: white;
 }
 
 @media (max-width: 768px) {
@@ -60,7 +61,6 @@ a{
   }
 
   .List {
-    
     gap: 20px;
   }
 

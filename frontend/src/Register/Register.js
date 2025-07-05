@@ -57,7 +57,7 @@ const navigate = useNavigate();
       const data = await res.json();
       if (res.ok) {
         alert("Registered successfully!");
-        navigate("/Dashboard");
+        navigate("/");
       } else {
         alert(data.error || "Something went wrong");
       }
@@ -71,8 +71,6 @@ const navigate = useNavigate();
   return (
     <>
       <div className="page-container">
-      <Navbar />
-      
       <form onSubmit={handleRegister}>
         <div className="Register-container">
           <div className="login-logo">

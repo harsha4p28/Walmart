@@ -5,7 +5,6 @@ import "./Policy.css";
 export default function Policy() {
   return (
     <div className="page-container">
-      <Navbar />
       <div className="policy-page">
         <h2>Privacy & Terms of Use</h2>
 

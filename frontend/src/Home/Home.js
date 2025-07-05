@@ -1,13 +1,21 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './Home.css';
 import Navbar from '../Navbar/Navbar';
 import { Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (localStorage.getItem("isLoggedIn") === "true") {
+      navigate("/Dashboard");
+    }
+  }, []);
+
   return (
     <>
         <div className='page-container'>
-        <Navbar/>
         <div className="home-container">
             <h1>Welcome to the Walmart Simulation Platform</h1>
             <p>Simulate operations, reduce emissions, and collaborate with managers.</p>

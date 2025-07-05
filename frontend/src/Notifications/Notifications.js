@@ -14,8 +14,6 @@ export default function Notifications() {
 
   return (
     <div className="page-container">
-      <Navbar />
-
       <div className="notifications-page">
         <h2>Notifications</h2>
 

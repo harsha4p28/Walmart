@@ -15,7 +15,7 @@ export default function Navbar() {
       </div>
 
       <ul className="List">
-        <li><a href="/">HOME</a></li>
+        <li><Link to={localStorage.getItem("isLoggedIn") === "true" ? "/Dashboard" : "/"}>HOME</Link></li>
         <li><a href="/History">HISTORY</a></li>
         <li><a href="/Policy"><Link to="/Policy" className="login-link">POLICY</Link></a></li>
       </ul>
