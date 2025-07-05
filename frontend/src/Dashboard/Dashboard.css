@@ -86,3 +86,52 @@
   margin: 5px 0;
   font-size: 1rem;
 }
+
+@media (max-width: 1024px) {
+  .options {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .left-part,
+  .right-part {
+    width: 45%;
+  }
+}
+
+@media (max-width: 768px) {
+  .upper-part {
+    height: auto;
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  .options {
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+  }
+
+  .options button {
+    width: 80%;
+    height: 45px;
+    font-size: 1rem;
+  }
+
+  .lower-part {
+    flex-direction: column;
+    height: auto;
+    padding: 20px 10px;
+    gap: 20px;
+  }
+
+  .left-part,
+  .right-part {
+    width: 90%;
+    height: auto;
+  }
+
+  .footer p {
+    font-size: 0.9rem;
+  }
+}

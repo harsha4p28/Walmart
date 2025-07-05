@@ -6,6 +6,8 @@ import Register from './Register/Register';
 import Dashboard from './Dashboard/Dashboard';
 import Simulation from './Simulation/Simulation';
 import Profile from './Profile/Profile';
+import Notifications from './Notifications/Notifications';
+import Policy from './Policy/Policy';
 
 function App() {
   return (
@@ -17,6 +19,8 @@ function App() {
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/Simulation" element={<Simulation />} />
         <Route path="/Profile" element={<Profile />} />
+        <Route path="/Notifications" element={<Notifications />} />
+        <Route path="/Policy" element={<Policy />} />
       </Routes>
     </Router>
   );

@@ -1,0 +1,51 @@
+.notifications-page {
+  padding: 40px;
+  background-color: #f7faff;
+  min-height: 80vh;
+}
+
+.notifications-page h2 {
+  color: #1e3a8a;
+  margin-bottom: 20px;
+}
+
+.notification-list {
+  list-style: none;
+  padding: 0;
+}
+
+.notification {
+  background-color: #ffffff;
+  border-left: 6px solid #3b82f6;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+.msg{
+    color: #1e3a8a;
+}
+
+
+.notification p {
+  margin: 5px 0;
+}
+
+.notification .time {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Types: success, warning, danger */
+.notification.success {
+  border-left-color: #22c55e;
+}
+
+.notification.warning {
+  border-left-color: #eab308;
+}
+
+.notification.danger {
+  border-left-color: #ef4444;
+}

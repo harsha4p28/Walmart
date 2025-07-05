@@ -17,12 +17,12 @@ export default function Navbar() {
       <ul className="List">
         <li><a href="/">HOME</a></li>
         <li><a href="/History">HISTORY</a></li>
-        <li><a href="/Policy">POLICY</a></li>
+        <li><a href="/Policy"><Link to="/Policy" className="login-link">POLICY</Link></a></li>
       </ul>
 
       <div className="profile">
         <button className="icon-button">
-          <FontAwesomeIcon icon={faBell} />
+          <Link to="/Notifications" className="login-link"><FontAwesomeIcon icon={faBell} /></Link>
         </button>
         
         <FontAwesomeIcon icon={faUser} />

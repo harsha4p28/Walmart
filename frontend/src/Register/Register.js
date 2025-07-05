@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import Navbar from "../Navbar/Navbar";
 import "./Register.css";
 import login_logo from "../assets/login_logo.png";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Register() {
+const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullname: "",
     email: "",
@@ -21,6 +23,25 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\d{10}$/;
+    const usernameRegex = /^[a-zA-Z0-9_]{4,20}$/; // Only letters, numbers, underscores; 4-20 chars
+
+    if (!emailRegex.test(formData.email)) {
+      alert("Please enter a valid email address");
+      return;
+    }
+
+    if (!phoneRegex.test(formData.phno)) {
+      alert("Phone number must be exactly 10 digits");
+      return;
+    }
+
+    if (!usernameRegex.test(formData.username)) {
+      alert("Username should be 4-20 characters, letters, numbers or underscores only");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords do not match");
       return;
@@ -36,6 +57,7 @@ export default function Register() {
       const data = await res.json();
       if (res.ok) {
         alert("Registered successfully!");
+        navigate("/Dashboard");
       } else {
         alert(data.error || "Something went wrong");
       }
@@ -44,6 +66,7 @@ export default function Register() {
       alert("Failed to register. Please try again later.");
     }
   };
+
 
   return (
     <>

@@ -86,3 +86,42 @@
   cursor: pointer;
   font-weight: 600;
 }
+
+/* Mobile & Tablet Responsive Styles */
+@media (max-width: 1024px) {
+  .profile-info {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-page {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .sidebar {
+    width: 100%;
+    text-align: center;
+  }
+
+  .sidebar ul {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .profile-main {
+    padding: 20px;
+  }
+
+  .profile-info {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .edit-btn {
+    width: 100%;
+    margin-top: 10px;
+  }
+}
