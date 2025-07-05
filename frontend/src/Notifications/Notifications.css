@@ -37,7 +37,6 @@
   color: #666;
 }
 
-/* Types: success, warning, danger */
 .notification.success {
   border-left-color: #22c55e;
 }

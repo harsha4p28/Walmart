@@ -33,6 +33,15 @@ p{
   cursor: pointer;
   font-size: 16px;
   margin-top: 20px;
+  transition: all 0.2s ease-in-out;
+}
+
+.home-container button:hover{
+  filter: brightness(85%);
+}
+
+.home-container button:active{
+  filter: brightness(70%);
 }
 
 .page-container {

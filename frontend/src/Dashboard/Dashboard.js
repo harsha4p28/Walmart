@@ -29,7 +29,7 @@ export default function Dashboard() {
             <div className="bg-image"></div>
             <h1>WELCOME MANAGER</h1>
             <div className="options">
-                <button className="simulation"><FontAwesomeIcon icon={faPlus} /><Link to="/Simulation" className="login-link">New Simulation</Link></button>
+                <button className="simulation"><FontAwesomeIcon icon={faPlus} /><Link to="/Simulation" className="link">New Simulation</Link></button>
                 <button className="full-map">Full Map</button>
             </div>
         </div>

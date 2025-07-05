@@ -54,7 +54,7 @@ function App() {
         <Route path="/Login" element={<Login setUserLoggedin={setUserLoggedin}/>} />
         {/* <Route path="/Dashboard" element={<Dashboard />} /> */}
         <Route path="/Simulation" element={<Simulation />} />
-        <Route path="/Profile" element={<Profile />} />
+        <Route path="/Profile" element={userLoggedin ? <Profile /> : <Register />} />
         <Route path="/Notifications" element={<Notifications />} />
         <Route path="/Policy" element={<Policy />} />
       </Routes>

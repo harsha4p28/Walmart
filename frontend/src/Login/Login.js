@@ -92,7 +92,7 @@ export default function Login({setUserLoggedin}) {
                     <button className="submit-btn" disabled={loading}>
                         {loading ? "Logging in..." : "Continue"}
                     </button>
-                    <p>Don’t have an account? <Link to="/Register" className="login-link">Register</Link></p>
+                    <p>Don't have an account?<span><Link to="/Register" className="register-link"> Register</Link></span></p>
                 </div>
             </form>
 

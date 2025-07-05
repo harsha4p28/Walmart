@@ -42,7 +42,7 @@
   flex-wrap: wrap;
 }
 
-.options button {
+.page-container button {
   background-color: #395dbe;
   height: 50px;
   width: 180px;
@@ -51,6 +51,15 @@
   font-size: 1rem;
   border: none;
   cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.page-container button:hover{
+  filter: brightness(85%);
+}
+
+.page-container button:active{
+  filter: brightness(70%);
 }
 
 .lower-part {
@@ -78,17 +87,6 @@
   gap: 20px;
   text-align: center;
   z-index: 6;
-}
-
-.lower-container button{
-  background-color: #395dbe;
-  height: 50px;
-  width: 180px;
-  color: white;
-  border-radius: 20px;
-  font-size: 1rem;
-  border: none;
-  cursor: pointer;
 }
 
 .notify-list {

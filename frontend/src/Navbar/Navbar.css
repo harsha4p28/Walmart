@@ -29,9 +29,18 @@
   cursor: pointer;
   
 }
-a{
+.link{
   text-decoration: none;
   color: white;
+  transition: all 0.2s ease-in-out;
+}
+
+.link:hover {
+  filter: brightness(85%); /* dims the color slightly */
+}
+
+.link:active {
+  filter: brightness(70%); /* dims more on click */
 }
 
 .icon-button {

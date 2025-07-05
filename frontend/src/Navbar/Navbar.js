@@ -15,18 +15,18 @@ export default function Navbar() {
       </div>
 
       <ul className="List">
-        <li><Link to={localStorage.getItem("isLoggedIn") === "true" ? "/Dashboard" : "/"}>HOME</Link></li>
-        <li><a href="/History">HISTORY</a></li>
-        <li><a href="/Policy"><Link to="/Policy" className="login-link">POLICY</Link></a></li>
+        <li><Link to={localStorage.getItem("isLoggedIn") === "true" ? "/Dashboard" : "/"} className="link">HOME</Link></li>
+        <li><a href="/History" className="link">HISTORY</a></li>
+        <li><Link to="/Policy" className="link" >POLICY</Link></li>
       </ul>
 
       <div className="profile">
         <button className="icon-button">
-          <Link to="/Notifications" className="login-link"><FontAwesomeIcon icon={faBell} /></Link>
+          <Link to="/Notifications" className="link"><FontAwesomeIcon icon={faBell} /></Link>
         </button>
         
         <FontAwesomeIcon icon={faUser} />
-        <span><Link to="/Profile" className="login-link"><p>Profile</p></Link></span>
+        <span><Link to="/Profile" className="link"><p>Profile</p></Link></span>
         
       </div>
     </nav>

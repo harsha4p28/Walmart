@@ -53,6 +53,15 @@ input {
     height: 50px;
     max-width: 600px;
     border-radius: 20px;
+    transition: all 0.2s ease-in-out;
+}
+
+.submit-btn:hover{
+  filter: brightness(85%);
+}
+
+.submit-btn:active{
+  filter: brightness(70%);
 }
 
 .login-pass p{
@@ -61,6 +70,20 @@ input {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.login-link{
+  text-decoration: none;
+  color: #333;
+  transition: all 0.2s ease-in-out;
+}
+
+.login-link:hover{
+  filter:contrast(45%);
+}
+
+.login-link:active{
+  filter: contrast(35%);
 }
 
 .page-container {
