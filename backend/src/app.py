@@ -212,6 +212,25 @@ def refresh():
     
     return response
 
+@app.route("/api/profile",methods=["GET"])
+@jwt_required()
+def profile():
+    try:
+        username=get_jwt_identity()
+        user =User.objects(username=username).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        return jsonify({
+            "username": user.username,
+            "email": user.email,
+            "name": user.fullname,
+            "phno":user.phno,
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/logout", methods=["POST"])
 def logout():
     response = jsonify({"message": "Logout successful"})
