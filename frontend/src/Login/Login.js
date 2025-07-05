@@ -4,7 +4,7 @@ import './Login.css';
 import login_logo from "../assets/login_logo.png";
 import { useNavigate } from "react-router-dom";
 
-export default function Login() {
+export default function Login({setUserLoggedin}) {
     const [formData, setFormData] = useState({
         username: "",
         password: "",
@@ -36,9 +36,10 @@ export default function Login() {
             if (res.ok) {
                 setFormData({ username: "", password: "" });
                 setSuccess(true);
-                navigate("/Dashboard");
+                setUserLoggedin(true)
                 setTimeout(() => {
                     setSuccess(false);
+                    navigate("/")
                 }, 500);
             } else {
                 setErrMsg(data.error || "Login failed");

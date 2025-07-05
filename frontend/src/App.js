@@ -45,10 +45,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path='/' element={userLoggedin ? <Dashboard /> : <Home />} />
         <Route path="/Register" element={<Register />} />
-        <Route path="/Login" element={<Login />} />
-        <Route path="/Dashboard" element={<Dashboard />} />
+        <Route path="/Login" element={<Login setUserLoggedin={setUserLoggedin}/>} />
+        {/* <Route path="/Dashboard" element={<Dashboard />} /> */}
         <Route path="/Simulation" element={<Simulation />} />
         <Route path="/Profile" element={<Profile />} />
       </Routes>
