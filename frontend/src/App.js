@@ -9,6 +9,7 @@ import Simulation from './Simulation/Simulation';
 import Profile from './Profile/Profile';
 import Notifications from './Notifications/Notifications';
 import Policy from './Policy/Policy';
+import Visualize from './Visualize/Visualize';
 
 function App() {
   const [userLoggedin, setUserLoggedin] = useState(false);
@@ -57,6 +58,7 @@ function App() {
         <Route path="/Profile" element={userLoggedin ? <Profile /> : <Register />} />
         <Route path="/Notifications" element={<Notifications />} />
         <Route path="/Policy" element={<Policy />} />
+        <Route path="/Visualize" element={<Visualize />} />
       </Routes>
     </Router>
   );

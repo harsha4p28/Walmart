@@ -30,6 +30,7 @@ export default function Simulation() {
       if (res.ok) {
         alert("Simulation started successfully!");
         console.log("Simulation response:", data);
+        
       } else {
         alert(data.error || "Simulation failed");
       }
@@ -89,9 +90,10 @@ export default function Simulation() {
               value={formData.count}
               onChange={handleChange}
             />
-
-            <button className="submit-btn" type="submit">
-              VISUALIZE
+            
+            {/* Made changes Temporarily (need to change the visualize button to type submit and also redirect it to maps at the same time) */}
+            <button>
+              <Link to="/Visualize" className="submit-btn">VISUALIZE</Link>
             </button>
           </div>
         </form>

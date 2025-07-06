@@ -25,7 +25,7 @@ export default function Profile() {
         } catch (error) {
             console.error("Error logging out:", error);
         }
-    };
+  };
   const handleProfileData= async () =>{
     try{
       const response = await fetch('http://localhost:5000/api/profile', {

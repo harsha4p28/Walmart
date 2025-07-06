@@ -13,3 +13,4 @@ backend/.env
 
 # macOS system file (safe to include)
 .DS_Store
+node_modules/

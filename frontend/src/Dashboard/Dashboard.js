@@ -11,16 +11,16 @@ export default function Dashboard() {
   const [outgoing, setOutgoing] = useState([]);
   const currentLocation ="Hyderabad";
   
-    useEffect(() => {
-      fetch("http://localhost:5000/api/shipments")
-      .then((res) => res.json())
-      .then((data) => {
-         const inList = data.filter((entry) => entry.to === currentLocation);
-         const outList = data.filter((entry) => entry.from === currentLocation);
-         setIncoming(inList);
-         setOutgoing(outList);
+  useEffect(() => {
+    fetch("http://localhost:5000/api/shipments")
+    .then((res) => res.json())
+    .then((data) => {
+        const inList = data.filter((entry) => entry.to === currentLocation);
+        const outList = data.filter((entry) => entry.from === currentLocation);
+        setIncoming(inList);
+        setOutgoing(outList);
     })
-      .catch((err) => console.error("Shipping error:", err));
+    .catch((err) => console.error("Shipping error:", err));
   }, []);
   return (
     <>
@@ -29,7 +29,10 @@ export default function Dashboard() {
             <div className="bg-image"></div>
             <h1>WELCOME MANAGER</h1>
             <div className="options">
-                <button className="simulation"><FontAwesomeIcon icon={faPlus} /><Link to="/Simulation" className="link">New Simulation</Link></button>
+                <button>
+                  <Link to="/Simulation" className="link"><FontAwesomeIcon icon={faPlus} /> New Simulation</Link>
+                </button>
+
                 <button className="full-map">Full Map</button>
             </div>
         </div>

@@ -25,7 +25,7 @@ const navigate = useNavigate();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{10}$/;
-    const usernameRegex = /^[a-zA-Z0-9_]{4,20}$/; // Only letters, numbers, underscores; 4-20 chars
+    const usernameRegex = /^[a-zA-Z0-9_]{4,20}$/;
 
     if (!emailRegex.test(formData.email)) {
       alert("Please enter a valid email address");

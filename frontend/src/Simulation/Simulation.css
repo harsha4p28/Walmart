@@ -34,6 +34,7 @@ input {
     max-width: 600px;
     border-radius: 20px;
     transition: all 0.2s ease-in-out;
+    text-decoration: none;
 }
 
 .submit-btn:hover{
