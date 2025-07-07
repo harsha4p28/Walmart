@@ -1,10 +1,11 @@
 from flask import Flask,request,jsonify
 from datetime import timedelta
 from flask_cors import CORS, cross_origin
-from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField, connect , fields
+from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField,DateTimeField,FloatField, connect , fields,EmbeddedDocumentListField,ReferenceField,ListField,EmbeddedDocumentField,LazyReferenceField
 from mongoengine.connection import get_connection
 import bcrypt
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
@@ -42,12 +43,23 @@ CORS(app, resources={
     }
 })
 
+
+
 class User(Document):
     fullname=StringField(required=True, max_length=100)
     email=EmailField(required=True,unique=True)
     username=StringField(required=True, max_length=100, unique=True)
     password=StringField(required=True)
     phno=IntField(required=True,unique=True)
+    role=StringField(required=False,null=True)
+    employeeId=StringField(required=False,null=True)
+
+#for every product
+class Product(Document):
+    name = StringField(required=True)
+    category = StringField()
+    volume_per_unit = FloatField()
+    meta = {'collection': 'products'}
 
 class Location(EmbeddedDocument):
     latitude = fields.FloatField(required=True)
@@ -59,56 +71,95 @@ class Capacity(EmbeddedDocument):
     used_volume = fields.IntField(required=True)
 
 class ProductItem(EmbeddedDocument):
-    product_id = fields.StringField(required=True)
-    name = fields.StringField()
-    quantity = fields.IntField(required=True)
-    volume_per_unit = fields.FloatField()
-    category = fields.StringField()
+    product = ReferenceField(Product, required=True)
+    quantity = IntField(required=True)
 
-class Manager(EmbeddedDocument):
-    manager_id = fields.StringField(required=True)
-    name = fields.StringField()
-    role = fields.StringField()
-    contact = fields.EmailField()
 
-class Shipment(EmbeddedDocument):
-    shipment_id = fields.StringField(required=True)
-    destination_store_id = fields.StringField()
-    products = fields.EmbeddedDocumentListField(ProductItem)
-    vehicle_id = fields.StringField()
-    status = fields.StringField(choices=["pending", "in_transit", "delivered"])
-    eta = fields.DateTimeField()
+class Manager(Document):
+    manager_id = StringField(required=True, unique=True)
+    name = StringField()
+    role = StringField()
+    contact = EmailField()
+    meta = {'collection': 'managers'}
+
+class Shipment(Document):
+    shipment_id = StringField(required=True, unique=True)
+    destination_store_id = StringField()
+    products = EmbeddedDocumentListField(ProductItem)
+    vehicle_id = StringField()
+    status = StringField(choices=["pending", "in_transit", "delivered"])
+    eta = DateTimeField()
+    meta = {'collection': 'shipments'}
+
 
 class SustainabilityMetrics(EmbeddedDocument):
     last_month_emissions_kg = fields.FloatField()
     avg_energy_use_kwh = fields.FloatField()
     green_certified = fields.BooleanField()
 
-class SimulationResult(EmbeddedDocument):
+class SimulationResult(Document):
     estimated_cost = fields.FloatField()
     estimated_emissions = fields.FloatField()
     suggested_by_ai = fields.BooleanField(default=False)
+    meta={'collection':"simulationResult"}
 
-class SimulationHistory(EmbeddedDocument):
+class SimulationHistory(Document):
     simulation_id = fields.StringField(required=True)
     date = fields.DateTimeField()
     description = fields.StringField()
-    result = fields.EmbeddedDocumentField(SimulationResult)
+    result = ReferenceField(SimulationResult)
+    meta={'collection':"simulationHistory"}
 
 class Warehouse(Document):
-    name = fields.StringField(required=True)
-    location = fields.EmbeddedDocumentField(Location, required=True)
-    capacity = fields.EmbeddedDocumentField(Capacity, required=True)
-    inventory = fields.EmbeddedDocumentListField(ProductItem)
-    managers = fields.EmbeddedDocumentListField(Manager)
-    current_shipments = fields.EmbeddedDocumentListField(Shipment)
-    sustainability_metrics = fields.EmbeddedDocumentField(SustainabilityMetrics)
-    simulation_history = fields.EmbeddedDocumentListField(SimulationHistory)
-    last_updated = fields.DateTimeField()
+    name = StringField(required=True)
+    location = EmbeddedDocumentField(Location, required=True)
+    capacity = EmbeddedDocumentField(Capacity, required=True)
+    inventory = EmbeddedDocumentListField(ProductItem)
+    sustainability_metrics = EmbeddedDocumentField(SustainabilityMetrics)
+    managers = ListField(ReferenceField(Manager))
+    current_shipments = ListField(ReferenceField(Shipment))
+    simulation_result= ListField(ReferenceField(SimulationResult))
+    simulation_history = ListField(ReferenceField(SimulationHistory))
+    last_updated = DateTimeField(default=datetime.utcnow)
+    meta = {'collection': 'warehouse'}
+
+class Employee(Document):
+    user_username = StringField(required=True)
+    user_role = StringField(required=True)
+    employee_id = StringField(required=True)
+    latitude = FloatField(required=True)
+    longitude = FloatField(required=True)
+    location_name = StringField(required=True)
+    warehouse_id = LazyReferenceField(Warehouse, required=False, null=True)
+    meta={'collection':'central'}
 
 @app.route('/')
 def home():
     return 'Hello, Flask!'
+
+def ensure_warehouse_for_user(username):
+    access=Employee.objects(user_username=username).first()
+    if not access:
+        raise Exception("User entry not found")
+    if access.warehouse_id:
+        return access.warehouse_id
+    location=Location(
+        latitude=access.latitude,
+        longitude=access.longitude,
+        address=access.location_name
+    )
+    warehouse=Warehouse(
+        name=access.location_name or f"Warehouse for {username}",
+        location=location,
+        capacity=Capacity(total_volume=10000,used_volume=0),
+        inventory=[],
+        sustainability_metrics=SustainabilityMetrics()
+    )
+    warehouse.save()
+    access.warehouse_id=warehouse
+    access.save()
+
+    return warehouse.id
 
 @app.route('/api/register',methods=["POST","OPTIONS"])
 def register():
@@ -141,7 +192,9 @@ def register():
             email=email,
             username=username,
             password=hashed_password,
-            phno=phno
+            phno=phno,
+            role="",
+            employeeId=""
         )
         new_user.save()
         return jsonify({
@@ -150,7 +203,7 @@ def register():
                 "fullname": new_user.fullname,
                 "email": new_user.email,
                 "username": new_user.username,
-                "phno": new_user.phno
+                "phno": new_user.phno,
             }
         }), 201
     except Exception as e:
@@ -169,16 +222,20 @@ def login():
 
         if not username or not password:
             return jsonify({"error": "Missing username or password"}), 400
+        
         user=User.objects(username=username).first()
+
         if not user or not check_password_hash(user.password, password):
             return jsonify({"error": "Invalid username or password"}), 401
         
+        warehouse_id=ensure_warehouse_for_user(username)
         access_token=create_access_token(identity=username)
         refresh_token=create_refresh_token(identity=username)
 
         response=jsonify({
             "message": "Login successful",
-            "username": username
+            "username": username,
+            "warehouse_id":str(warehouse_id)
         })
 
         set_access_cookies(response, access_token)
