@@ -3,7 +3,7 @@ frontend/node_modules/
 frontend/build/
 
 # Python - ignore virtual environment and compiled files
-backend/venv/
+backend/src/venv/
 backend/__pycache__/
 
 # Ignore environment files
