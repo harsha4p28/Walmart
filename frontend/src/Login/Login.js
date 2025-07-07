@@ -1,5 +1,4 @@
-import React, { useState ,useEffect} from "react";
-import Navbar from "../Navbar/Navbar";
+import React, { useState } from "react";
 import './Login.css';
 import login_logo from "../assets/login_logo.png";
 import { Link,useNavigate } from "react-router-dom";

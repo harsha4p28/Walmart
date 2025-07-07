@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import React, { useEffect, useState, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import ReactFlow, { Background, Controls } from "reactflow";
+import "reactflow/dist/style.css";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -13,71 +15,133 @@ L.Icon.Default.mergeOptions({
 export default function Visualize() {
   const [fromCoords, setFromCoords] = useState(null);
   const [toCoords, setToCoords] = useState(null);
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
+
+  const getCoords = async (place) => {
+    const apiKey = "6c331e8e8fc24d71ac3553394860b032"; // Replace with your real key
+    const response = await fetch(
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`
+    );
+    const result = await response.json();
+    if (result.results && result.results.length > 0) {
+      return result.results[0].geometry;
+    }
+    return null;
+  };
 
   useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/location", {
-          method: "GET", // Or POST depending on backend route
-          credentials: "include",
-        });
+    const fetchCoords = async () => {
+      const from = await getCoords("Mumbai");
+      const to = await getCoords("Chennai");
 
-        if (res.ok) {
-          const data = await res.json();
-
-          const toLocation = data.toLocation;
-          const fromLocation = data.fromLocation;
-
-          const getCoords = async (place) => {
-            const apiKey = "51a73799f5604e3dac6442e071773b32"; 
-            const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
-
-            const result = await response.json();
-            if (result.results && result.results.length > 0) {
-              return result.results[0].geometry;
-            }
-            return null;
-          };
-
-          setToCoords(await getCoords(toLocation));
-          setFromCoords(await getCoords(fromLocation));
-        } else {
-          console.error("Failed to load location data from backend");
-        }
-      } catch (err) {
-        console.error("Error fetching locations:", err);
-      }
+      setFromCoords(from);
+      setToCoords(to);
     };
-
-    fetchLocations();
+    fetchCoords();
   }, []);
 
+  function FlowOverlay() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !fromCoords || !toCoords) return;
+
+    const fromPoint = map.latLngToContainerPoint([fromCoords.lat, fromCoords.lng]);
+    const toPoint = map.latLngToContainerPoint([toCoords.lat, toCoords.lng]);
+
+    const reactflowNodes = [
+      {
+        id: "from",
+        position: { x: fromPoint.x, y: fromPoint.y },
+        data: { label: "From: Mumbai" },
+        type: "default",
+        style: {width: 100, height: 35}
+      },
+      {
+        id: "to",
+        position: { x: toPoint.x, y: toPoint.y },
+        data: { label: "To: Chennai" },
+        type: "default",
+        style: {width: 100, height: 35}
+      },
+    ];
+
+    const reactflowEdges = [
+      {
+        id: "e1-2",
+        source: "from",
+        target: "to",
+        animated: true,
+      },
+    ];
+
+    // Only update if coordinates have changed
+    setNodes((prevNodes) => {
+      const same = JSON.stringify(prevNodes) === JSON.stringify(reactflowNodes);
+      return same ? prevNodes : reactflowNodes;
+    });
+
+    setEdges((prevEdges) => {
+      const same = JSON.stringify(prevEdges) === JSON.stringify(reactflowEdges);
+      return same ? prevEdges : reactflowEdges;
+    });
+
+  }, [map, fromCoords, toCoords]);
+
+  return null;
+}
+
+
   return (
-    <MapContainer
-      center={[23.5937, 80.9629]}
-      zoom={6}
-      style={{ height: "90vh", width: "100%" }}
-    >
-      <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div style={{ height: "90vh", width: "100%", position: "relative" }}>
+      <MapContainer
+        center={[20.5937, 78.9629]}
+        zoom={5}
+        style={{ height: "100%", width: "100%", zIndex: 1 }}
+      >
+        <TileLayer
+          attribution='&copy; OpenStreetMap contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {fromCoords && (
+          <Marker position={[fromCoords.lat, fromCoords.lng]}>
+            <Popup><strong>Mumbai</strong></Popup>
+          </Marker>
+        )}
+        {toCoords && (
+          <Marker position={[toCoords.lat, toCoords.lng]}>
+            <Popup><strong>Chennai</strong></Popup>
+          </Marker>
+        )}
+        <FlowOverlay />
+      </MapContainer>
 
-      {fromCoords && (
-        <Marker position={[fromCoords.lat, fromCoords.lng]}>
-          <Popup>
-            <strong>FROM</strong>
-          </Popup>
-        </Marker>
-      )}
-
-      {toCoords && (
-        <Marker position={[toCoords.lat, toCoords.lng]}>
-          <Popup>
-            <strong>TO</strong>
-          </Popup>
-        </Marker>
-      )}
-    </MapContainer>
+      {/* React Flow overlay on top of map */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: "100%",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      >
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          fitView
+          nodesDraggable={false}
+          nodesConnectable={false}
+          zoomOnScroll={false}
+          panOnDrag={false}
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
+      </div>
+    </div>
   );
 }
