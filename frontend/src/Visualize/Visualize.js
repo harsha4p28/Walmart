@@ -30,7 +30,7 @@ export default function Visualize() {
   };
 
   const getCoords = async (place) => {
-    const apiKey = "6c331e8e8fc24d71ac3553394860b032"; // Replace with your key
+    const apiKey = "<my_api_key>"; // Replace with your key
     const response = await fetch(
       `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
         place
