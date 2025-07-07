@@ -42,6 +42,8 @@ export default function Login({setUserLoggedin}) {
                 }, 500);
             } else {
                 setErrMsg(data.error || "Login failed");
+                console.log("Login response:", data);
+
                 setTimeout(() => {
                     setErrMsg('');
                 }, 3000);

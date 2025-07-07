@@ -10,11 +10,16 @@ import Profile from './Profile/Profile';
 import Notifications from './Notifications/Notifications';
 import Policy from './Policy/Policy';
 import Visualize from './Visualize/Visualize';
+import Reactflow from './Reactflow/Reactflow';
 
 function App() {
   const [userLoggedin, setUserLoggedin] = useState(false);
 
   useEffect(() => {
+
+    const ro = new ResizeObserver(() => {});
+    ro.observe(document.body);
+
     const checkAuth = async () => {
       try {
         const res = await fetch('http://localhost:5000/api/me', {
@@ -59,6 +64,7 @@ function App() {
         <Route path="/Notifications" element={<Notifications />} />
         <Route path="/Policy" element={<Policy />} />
         <Route path="/Visualize" element={<Visualize />} />
+        <Route path="/Reactflow" element={<Reactflow />} />
       </Routes>
     </Router>
   );

@@ -57,7 +57,7 @@ const navigate = useNavigate();
       const data = await res.json();
       if (res.ok) {
         alert("Registered successfully!");
-        navigate("/");
+        navigate("/Login");
       } else {
         alert(data.error || "Something went wrong");
       }
