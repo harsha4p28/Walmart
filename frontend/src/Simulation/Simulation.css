@@ -27,6 +27,10 @@ input {
   border: 1px solid #ccc;
 }
 
+.truckType{
+  height: 50px;
+}
+
 .submit-btn{
     background-color: #395dbe;
     color: white;

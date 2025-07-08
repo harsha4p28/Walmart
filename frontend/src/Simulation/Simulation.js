@@ -4,6 +4,7 @@ import "./Simulation.css";
 import { Link } from "react-router-dom";
 
 export default function Simulation() {
+  const [truckType, setTruckType] = useState("large");
   const [formData, setFormData] = useState({
     to: "",
     mode: "",
@@ -70,15 +71,16 @@ export default function Simulation() {
             />
 
             <label htmlFor="model">MODEL OF MODE:</label>
-            <input
-              id="model"
-              type="text"
-              name="model"
-              placeholder="Enter model of mode"
-              value={formData.model}
-              onChange={handleChange}
-              required
-            />
+            <select
+              className="truckType"
+              value={truckType}
+              onChange={(e) => setTruckType(e.target.value)}
+            >
+              <option value="small">Light Duty Truck / Van / SUV (Small Diesel)</option>
+              <option value="medium">Medium Duty Truck (Medium Diesel)</option>
+              <option value="large">Heavy Duty Truck (Large Diesel)</option>
+              <option value="electric">Electric Truck</option>
+            </select>
 
             <label htmlFor="count">COUNT:</label>
             <textarea

@@ -3,13 +3,26 @@ import Navbar from "../Navbar/Navbar";
 import './Dashboard.css'
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 export default function Dashboard() {
 
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const currentLocation ="Hyderabad";
+  const navigate = useNavigate();
+
+  const handleSimulation = () => {
+    navigate('/Visualize');
+  }
+
+  const handleIncoming = () => {
+    navigate('/Incoming');
+  }
+
+  const handleOutgoing = () => {
+    navigate('/Outgoing');
+  }
   
   useEffect(() => {
     fetch("http://localhost:5000/api/shipments")
@@ -29,8 +42,8 @@ export default function Dashboard() {
             <div className="bg-image"></div>
             <h1>WELCOME MANAGER</h1>
             <div className="options">
-                <button>
-                  <Link to="/Simulation" className="link"><FontAwesomeIcon icon={faPlus} /> New Simulation</Link>
+                <button onClick={handleSimulation}>
+                  <FontAwesomeIcon icon={faPlus} /> New Simulation
                 </button>
 
                 <button className="full-map">Full Map</button>
@@ -46,7 +59,7 @@ export default function Dashboard() {
                   </li>
                 ))}
               </ul>
-              <button>View On Map</button>
+              <button onClick={handleIncoming}>View On Map</button>
             </div>
 
             <div className="lower-container">
@@ -58,7 +71,7 @@ export default function Dashboard() {
                   </li>
                 ))}
               </ul>
-              <button>View On Map</button>
+              <button onClick={handleOutgoing}>View On Map</button>
             </div>
         </div>
 

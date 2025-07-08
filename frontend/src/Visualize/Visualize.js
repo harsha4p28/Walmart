@@ -20,22 +20,31 @@ export default function Visualize() {
   const [toCoordsList, setToCoordsList] = useState([]);
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [nodesForNextPage, setNodesForNextPage] = useState([]);
+  const [edgesForNextPage, setEdgesForNextPage] = useState([]);
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const climatiqApiKey = "<climatiq_api>"; //must include API => Climatiq's API requires authentication and restricts CORS,
+  //  so when you fetch from your React app (frontend), the browser blocks it. 
 
-  let navigate = useNavigate();
 
-  const routeReactFlow = () => {
-    navigate("/Reactflow");
-  };
+
+  const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
+    const emissionFactors = {
+      small: 0.14,
+      medium: 0.21,
+      large: 0.35,
+      electric: 0.05,
+    };
+
+    return distanceKm * emissionFactors[truckType] * numTrucks; // kg CO₂
+};
+
+
 
   const getCoords = async (place) => {
     const apiKey = "6c331e8e8fc24d71ac3553394860b032"; // Replace with your key
-    const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(
-        place
-      )}&key=${apiKey}`
-    );
+    const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
     const result = await response.json();
     if (result.results && result.results.length > 0) {
       return result.results[0].geometry;
@@ -62,7 +71,7 @@ export default function Visualize() {
   function FlowOverlay() {
     const map = useMap();
 
-    const updateNodePositions = () => {
+    const updateNodePositions = async () => {
       if (!map || !fromCoords || toCoordsList.length === 0) return;
 
       const OFFSET_Y = 40;
@@ -86,16 +95,25 @@ export default function Visualize() {
 
       const newEdges = [];
 
-      toCoordsList.forEach((toCoord, idx) => {
+      const emissionPromises = toCoordsList.map(async (toCoord, idx) => {
         const toPoint = map.latLngToContainerPoint([toCoord.lat, toCoord.lng]);
         const toId = `to-${idx}`;
 
-        // 🧮 Calculate real distance in km
+        const truckType = "large";  // Assign manually
+        const numTrucks = 2;        // Assign manually
+
         const distanceInKm =
           getDistance(
             { latitude: fromCoords.lat, longitude: fromCoords.lng },
             { latitude: toCoord.lat, longitude: toCoord.lng }
           ) / 1000;
+
+        const emissions = await fetchEmissions(distanceInKm, truckType, numTrucks);
+
+        // Assign edge color based on severity
+        let strokeColor = "#2ecc71"; // green (low)
+        if (emissions > 800) strokeColor = "#e67e22"; // orange (medium)
+        if (emissions > 1500) strokeColor = "#e74c3c"; // red (high)
 
         newNodes.push({
           id: toId,
@@ -112,7 +130,7 @@ export default function Visualize() {
           id: `e-from-${toId}`,
           source: "from",
           target: toId,
-          label: `${distanceInKm.toFixed(2)} km`, 
+          label: `${distanceInKm.toFixed(2)} km`,
           animated: true,
           markerEnd: {
             type: "arrowclosed",
@@ -120,9 +138,28 @@ export default function Visualize() {
             height: 20,
             color: "#000",
           },
-          labelStyle: { fontSize: 12, fill: "#000000" },
+          labelStyle: { fontSize: 12, fill: "#222" },
+          style: {
+            stroke: strokeColor,
+            strokeWidth: 2.5,
+          },
+          data: {
+            truckType,
+            numTrucks,
+            emissions: emissions.toFixed(2),
+          },
         });
       });
+
+      await Promise.all(emissionPromises);
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+
+      // ✅ Save for Reactflow page
+      setNodesForNextPage(newNodes);
+      setEdgesForNextPage(newEdges);
+
 
       setNodes((prevNodes) => {
         const same = JSON.stringify(prevNodes) === JSON.stringify(newNodes);
@@ -133,7 +170,7 @@ export default function Visualize() {
         const same = JSON.stringify(prevEdges) === JSON.stringify(newEdges);
         return same ? prevEdges : newEdges;
       });
-    };
+    }; //updateNodePositions
 
     const debouncedUpdate = debounce(updateNodePositions, 100);
 
@@ -148,7 +185,18 @@ export default function Visualize() {
     }, [map, fromCoords, toCoordsList]);
 
     return null;
-  }
+  } //FlowOverlay
+
+  let navigate = useNavigate();
+
+  const routeReactFlow = () => {
+    navigate("/Reactflow", {
+      state: {
+        nodes: nodesForNextPage,
+        edges: edgesForNextPage,
+      }
+    });
+  };
 
   return (
     <>
@@ -233,17 +281,21 @@ export default function Visualize() {
                 left: cursorPos.x + 10,
                 background: "#222",
                 color: "#fff",
-                padding: "6px 10px",
+                padding: "8px 12px",
                 borderRadius: "6px",
                 fontSize: "12px",
                 pointerEvents: "none",
                 zIndex: 1000,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
               }}
             >
-              🚚 <strong>Distance:</strong> {hoveredEdge.label}
+              <div><strong>🚛 Truck Type:</strong> {hoveredEdge.data?.truckType}</div>
+              <div><strong>🛻 No. of Trucks:</strong> {hoveredEdge.data?.numTrucks}</div>
+              <div><strong>📏 Distance:</strong> {hoveredEdge.label}</div>
+              <div><strong>🌿 Emissions:</strong> {hoveredEdge.data?.emissions} kg CO₂</div>
             </div>
           )}
+
 
         </div>
       </div>

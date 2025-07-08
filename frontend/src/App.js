@@ -11,6 +11,8 @@ import Notifications from './Notifications/Notifications';
 import Policy from './Policy/Policy';
 import Visualize from './Visualize/Visualize';
 import Reactflow from './Reactflow/Reactflow';
+import Incoming from './Incoming/Incoming';
+import Outgoing from './Outgoing/Outgoing';
 
 function App() {
   const [userLoggedin, setUserLoggedin] = useState(false);
@@ -65,6 +67,8 @@ function App() {
         <Route path="/Policy" element={<Policy />} />
         <Route path="/Visualize" element={<Visualize />} />
         <Route path="/Reactflow" element={<Reactflow />} />
+        <Route path="/Incoming" element={<Incoming />} />
+        <Route path="/Outgoing" element={<Outgoing />} />
       </Routes>
     </Router>
   );
