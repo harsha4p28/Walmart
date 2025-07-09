@@ -183,6 +183,40 @@ def get_location():
     except Exception as e:
         return jsonify({"error":str(e)}),500
     
+
+@app.route('/api/simulate', methods=["POST"])
+@jwt_required()
+def simulate():
+    try:
+        username = get_jwt_identity()
+        data = request.get_json()
+
+        to = data.get("to")
+        mode = data.get("mode")
+        model = data.get("model") or "large"
+        count = int(data.get("count", 1))
+
+        if not to or not mode or not count:
+            return jsonify({"error": "Missing required simulation data"}), 400
+
+        # Optional logging
+        print(f"[SIMULATION] User: {username}, To: {to}, Mode: {mode}, Model: {model}, Count: {count}")
+
+        return jsonify({
+            "message": "Simulation data received successfully",
+            "simulation": {
+                "to": to,
+                "mode": mode,
+                "model": model,
+                "count": count
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"Error in /api/simulate: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+    
 @app.route('/api/warehouse', methods=["GET"])
 @jwt_required()
 def get_own_warehouse_details():
@@ -317,7 +351,7 @@ def shipments():
                     "mode": ship.vehicle_mode,
                     "count": ship.vehicle_count,
                     "status": ship.status,
-                    "eta": ship.eta and ship.eta.isoformat()
+                    "eta": ship.eta and ship.eta.isoformat(),
                 })
 
         return jsonify({

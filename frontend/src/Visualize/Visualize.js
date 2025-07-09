@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap,} from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import ReactFlow, { Background, Controls } from "reactflow";
 import "reactflow/dist/style.css";
 import debounce from "lodash/debounce";
-import { useNavigate ,useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getDistance } from "geolib";
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -16,11 +16,22 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function Visualize() {
-
   const location = useLocation();
-  const [latitude, setLatitude] = useState(null);
-  const [longitude, setLongitude] = useState(null);
+  let { latitude, longitude, formData } = location.state || {};
 
+// Fallback if formData is undefined
+if (!formData) {
+  try {
+    formData = JSON.parse(localStorage.getItem("formData")) || {};
+    const coords = JSON.parse(localStorage.getItem("toLatLng"));
+    if (coords) {
+      latitude = coords.latitude;
+      longitude = coords.longitude;
+    }
+  } catch (e) {
+    formData = {};
+  }
+}
   const [fromCoords, setFromCoords] = useState([]);
   const [toCoordsList, setToCoordsList] = useState([]);
   const [nodes, setNodes] = useState([]);
@@ -29,10 +40,6 @@ export default function Visualize() {
   const [edgesForNextPage, setEdgesForNextPage] = useState([]);
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const climatiqApiKey = "<climatiq_api>"; // must include API => Climatiq's API requires authentication and restricts CORS,
-  //  so when you fetch from your React app (frontend), the browser blocks it. 
-
-
 
   const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
     const emissionFactors = {
@@ -41,108 +48,106 @@ export default function Visualize() {
       large: 0.35,
       electric: 0.05,
     };
+    return distanceKm * emissionFactors[truckType] * numTrucks;
+  };
 
-    return distanceKm * emissionFactors[truckType] * numTrucks; // kg CO₂
-};
-
-
-
-  // const getCoords = async (place) => {
-  //   const apiKey = "<my_api_key>"; // Replace with your key
-  //   const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
-  //   const result = await response.json();
-  //   if (result.results && result.results.length > 0) {
-  //     return result.results[0].geometry;
-  //   }
-  //   return null;
-  // };
-
-  // useEffect(() => {
-  //   const fetchCoords = async () => {
-  //     const from = await getCoords("Mumbai");
-  //     const toPlaces = ["Chennai", "Bangalore", "Hyderabad"];
-  //     const toCoords = await Promise.all(toPlaces.map(getCoords));
-  //     setFromCoords(from);
-  //     setToCoordsList(
-  //       toCoords.map((coord, idx) => ({
-  //         ...coord,
-  //         label: toPlaces[idx],
-  //       }))
-  //     );
-  //   };
-  //   fetchCoords();
-  // }, []);
   useEffect(() => {
-  const storedLatitude = localStorage.getItem("destinationLatitude");
-  const storedLongitude = localStorage.getItem("destinationLongitude");
+    const savedFromCoords = localStorage.getItem("fromCoords");
+    const savedToCoords = localStorage.getItem("toCoordsList");
+    const savedFormData = localStorage.getItem("formData");
+    const savedLatLng = localStorage.getItem("toLatLng");
 
-  if (storedLatitude && storedLongitude) {
-    const lat = parseFloat(storedLatitude);
-    const lng = parseFloat(storedLongitude);
+    if (savedFromCoords && savedToCoords && savedFormData && savedLatLng) {
+      setFromCoords(JSON.parse(savedFromCoords));
+      setToCoordsList(JSON.parse(savedToCoords));
+      formData = JSON.parse(savedFormData);
+      const { latitude: lat, longitude: lng } = JSON.parse(savedLatLng);
+      latitude = lat;
+      longitude = lng;
+      return;
+    }
 
-    setLatitude(lat);
-    setLongitude(lng);
+    if (latitude && longitude && formData) {
+      const fetchCoords = async () => {
+        try {
+          const response = await fetch("http://localhost:5000/api/warehouse", {
+            method: "GET",
+            credentials: "include",
+          });
 
-    const fetchCoords = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/warehouse', {
-          method: 'GET',
-          credentials: 'include',
-        });
+          if (response.ok) {
+            const data = await response.json();
+            const fromCoord = {
+              lat: data.latitude,
+              lng: data.longitude,
+              label: "Warehouse",
+            };
+            const toCoords = [
+              { lat: latitude, lng: longitude, label: formData.to || "Destination" },
+            ];
 
-        if (response.ok) {
-          const data = await response.json();
-          setFromCoords({ lat: data.latitude, lng: data.longitude, label: "Warehouse" });
+            setFromCoords(fromCoord);
+            setToCoordsList(toCoords);
 
-          if (typeof lat === "number" && !isNaN(lat) && typeof lng === "number" && !isNaN(lng)) {
-            setToCoordsList([{ lat: lat, lng: lng, label: "Destination" }]);
+            // Save to localStorage
+            localStorage.setItem("fromCoords", JSON.stringify(fromCoord));
+            localStorage.setItem("toCoordsList", JSON.stringify(toCoords));
+            localStorage.setItem("formData", JSON.stringify(formData));
+            localStorage.setItem("toLatLng", JSON.stringify({ latitude, longitude }));
           } else {
-            alert("Invalid destination latitude or longitude");
-            setToCoordsList([]);
+            console.error("Failed to load warehouse data from the backend");
           }
-        } else {
-          console.error("Failed to load warehouse data from the backend");
+        } catch (error) {
+          console.error("Error retrieving profile data:", error);
         }
-      } catch (error) {
-        console.error("Error retrieving profile data:", error);
-      }
+      };
+
+      fetchCoords();
+    }
+  }, []);
+
+  const handleLock = async () => {
+  try {
+    if (!formData || !formData.to || !formData.mode || !formData.model || !formData.count) {
+      alert("Simulation data is incomplete. Please fill out the form again.");
+      return;
+    }
+
+    const simulationData = {
+      to: formData.to,
+      mode: formData.mode,
+      model: formData.model,
+      count: formData.count,
     };
 
-    fetchCoords();
-  }
-}, []);
+    const response = await fetch("http://localhost:5000/api/addSimulation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(simulationData),
+    });
 
-  const handleLock= async ()=>{
+    const data = await response.json();
 
-    try{
-      const simulationData = {
-        to: localStorage.getItem("to"),
-        mode: localStorage.getItem("mode"),
-        model: localStorage.getItem("model"),
-        count: localStorage.getItem("count"),
-      };
-      if (!simulationData.to ) {
-        alert("Simulation data is incomplete. Please fill out the form again.");
-        return;
-      }
-      const response = await fetch("http://localhost:5000/api/addSimulation",{
-          method: 'POST',
-          headers: { "Content-Type": "application/json" },
-          credentials: 'include',
-          body: JSON.stringify(simulationData)
-      });
-      const data = await response.json();
-      if (response.ok) {
-        alert("Simulation data successfully saved!");
-        console.log("Saved:", data);
-      } else {
-        alert(data.error || "Failed to save simulation data.");
-      }
-    }catch (error) {
-      console.error("Error sending simulation data:", error);
-      alert("An error occurred while saving the simulation.");
+    if (response.ok) {
+      alert("Simulation data successfully saved!");
+      console.log("Saved:", data);
+
+      // ✅ Clear localStorage after locking the route
+      localStorage.removeItem("fromCoords");
+      localStorage.removeItem("toCoordsList");
+      localStorage.removeItem("formData");
+      localStorage.removeItem("toLatLng");
+      localStorage.removeItem("flowNodes");
+      localStorage.removeItem("flowEdges");
+    } else {
+      alert(data.error || "Failed to save simulation data.");
     }
-  };
+  } catch (error) {
+    console.error("Error sending simulation data:", error);
+    alert("An error occurred while saving the simulation.");
+  }
+};
 
 
   function FlowOverlay() {
@@ -152,19 +157,13 @@ export default function Visualize() {
       if (!map || !fromCoords.lat || !fromCoords.lng || toCoordsList.length === 0) return;
 
       const OFFSET_Y = 40;
-      const fromPoint = map.latLngToContainerPoint([
-        fromCoords.lat,
-        fromCoords.lng,
-      ]);
+      const fromPoint = map.latLngToContainerPoint([fromCoords.lat, fromCoords.lng]);
 
       const newNodes = [
         {
           id: "from",
-          position: {
-            x: fromPoint.x,
-            y: fromPoint.y - OFFSET_Y,
-          },
-          data: { label: "From: Mumbai" },
+          position: { x: fromPoint.x, y: fromPoint.y - OFFSET_Y },
+          data: { label: `From: ${fromCoords.label}` },
           type: "default",
           style: { width: 120, height: 35 },
         },
@@ -176,9 +175,8 @@ export default function Visualize() {
         const toPoint = map.latLngToContainerPoint([toCoord.lat, toCoord.lng]);
         const toId = `to-${idx}`;
 
-        const truckType = "large";  // Assign manually
-        const numTrucks = 2;        // Assign manually
-
+        const truckType = formData.model || "large";
+        const numTrucks = parseInt(formData.count) || 1;
         const distanceInKm =
           getDistance(
             { latitude: fromCoords.lat, longitude: fromCoords.lng },
@@ -187,20 +185,16 @@ export default function Visualize() {
 
         const emissions = await fetchEmissions(distanceInKm, truckType, numTrucks);
 
-        // Assign edge color based on severity
-        let strokeColor = "#2ecc71"; // green (low)
-        if (emissions > 800) strokeColor = "#e67e22"; // orange (medium)
-        if (emissions > 1500) strokeColor = "#e74c3c"; // red (high)
+        let strokeColor = "#2ecc71";
+        if (emissions > 800) strokeColor = "#e67e22";
+        if (emissions > 1500) strokeColor = "#e74c3c";
 
         newNodes.push({
           id: toId,
-          position: {
-            x: toPoint.x,
-            y: toPoint.y - OFFSET_Y,
-          },
+          position: { x: toPoint.x, y: toPoint.y - OFFSET_Y },
           data: { label: `To: ${toCoord.label}` },
           type: "default",
-          style: { width: 120, height: 35 },
+          style: { width: 120, height: 40 },
         });
 
         newEdges.push({
@@ -216,10 +210,7 @@ export default function Visualize() {
             color: "#000",
           },
           labelStyle: { fontSize: 12, fill: "#222" },
-          style: {
-            stroke: strokeColor,
-            strokeWidth: 2.5,
-          },
+          style: { stroke: strokeColor, strokeWidth: 2.5 },
           data: {
             truckType,
             numTrucks,
@@ -232,29 +223,19 @@ export default function Visualize() {
 
       setNodes(newNodes);
       setEdges(newEdges);
-
-      // ✅ Save for Reactflow page
       setNodesForNextPage(newNodes);
       setEdgesForNextPage(newEdges);
 
-
-      setNodes((prevNodes) => {
-        const same = JSON.stringify(prevNodes) === JSON.stringify(newNodes);
-        return same ? prevNodes : newNodes;
-      });
-
-      setEdges((prevEdges) => {
-        const same = JSON.stringify(prevEdges) === JSON.stringify(newEdges);
-        return same ? prevEdges : newEdges;
-      });
-    }; //updateNodePositions
+      // ✅ Save to localStorage
+      localStorage.setItem("flowNodes", JSON.stringify(newNodes));
+      localStorage.setItem("flowEdges", JSON.stringify(newEdges));
+    };
 
     const debouncedUpdate = debounce(updateNodePositions, 100);
 
     useEffect(() => {
       map.on("zoom", debouncedUpdate);
       map.on("move", debouncedUpdate);
-
       return () => {
         map.off("zoom", debouncedUpdate);
         map.off("move", debouncedUpdate);
@@ -262,90 +243,95 @@ export default function Visualize() {
     }, [map, fromCoords, toCoordsList]);
 
     return null;
-  } //FlowOverlay
+  }
 
-  let navigate = useNavigate();
+  const navigate = useNavigate();
 
   const routeReactFlow = () => {
+    const storedNodes = JSON.parse(localStorage.getItem("flowNodes") || "[]");
+    const storedEdges = JSON.parse(localStorage.getItem("flowEdges") || "[]");
+
     navigate("/Reactflow", {
       state: {
-        nodes: nodesForNextPage,
-        edges: edgesForNextPage,
-      }
+        nodes: nodesForNextPage.length ? nodesForNextPage : storedNodes,
+        edges: edgesForNextPage.length ? edgesForNextPage : storedEdges,
+      },
     });
   };
 
   return (
     <>
-      <button
-        onClick={routeReactFlow}
-        style={{
-          backgroundColor: "rgb(35, 190, 198)",
-          width: "100%",
-          color: "white",
-        }}
-      >
-        Flow View
-      </button>      
       <div style={{ height: "90vh", width: "100%", position: "relative" }}>
-        <button 
-        className="lock-button"
-        onClick={handleLock}
-        >Lock this Route</button>
-        <MapContainer
-          center={[15.63, 77.31]}
-          zoom={6}
-          style={{ height: "100%", width: "100%", zIndex: 1 }}
-        >
+        <div style={{ position: "relative", width: "100%", height: "90vh" }}>
+        <MapContainer center={[15.63, 77.31]} zoom={6} style={{ height: "100%", width: "100%", zIndex: 1 }}>
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {fromCoords?.lat && fromCoords?.lng && (
             <Marker position={[fromCoords.lat, fromCoords.lng]}>
-              <Popup>
-                <strong>From: Mumbai</strong>
-              </Popup>
+              <Popup><strong>From: Mumbai</strong></Popup>
             </Marker>
           )}
-
-          {toCoordsList &&
-            toCoordsList.map((coord, idx) => (
-              <Marker key={idx} position={[coord.lat, coord.lng]}>
-                <Popup>
-                  <strong>{coord.label}</strong>
-                </Popup>
-              </Marker>
-            ))}
-
+          {toCoordsList.map((coord, idx) => (
+            <Marker key={idx} position={[coord.lat, coord.lng]}>
+              <Popup><strong>{coord.label}</strong></Popup>
+            </Marker>
+          ))}
           <FlowOverlay />
         </MapContainer>
 
-        {/* React Flow overlay on top of map */}
-        <div
-          style={{
+        <div style={{
             position: "absolute",
-            top: 0,
-            left: 0,
-            height: "100%",
-            width: "100%",
-            overflow: "hidden",
-            pointerEvents: "none",
-            zIndex: 2,
-          }}
-        >
+            top: "10px",
+            right: "10px",
+            display: "flex",
+            
+            gap: "10px",
+            zIndex: 1000,
+          }}>
+            <button
+              onClick={handleLock}
+              style={{
+                padding: "10px 15px",
+                background: "#27ae60",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              }}
+            >
+              Lock Route
+            </button>
+            <button
+              onClick={routeReactFlow}
+              style={{
+                padding: "10px 15px",
+                background: "#3498db",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              }}
+            >
+              Flow View
+            </button>
+          </div>
+                  
+        </div>
+
+        <div style={{
+          position: "absolute", top: 0, left: 0, height: "100%", width: "100%",
+          overflow: "hidden", pointerEvents: "none", zIndex: 2
+        }}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
-            onEdgeMouseEnter={(event, edge) => {
-              setHoveredEdge(edge);
-            }}
-            onEdgeMouseLeave={() => {
-              setHoveredEdge(null);
-            }}
-            onMouseMove={(event) => {
-              setCursorPos({ x: event.clientX, y: event.clientY });
-            }}
+            onEdgeMouseEnter={(e, edge) => setHoveredEdge(edge)}
+            onEdgeMouseLeave={() => setHoveredEdge(null)}
+            onMouseMove={(e) => setCursorPos({ x: e.clientX, y: e.clientY })}
             nodesDraggable={false}
             nodesConnectable={false}
             zoomOnScroll={false}
@@ -355,29 +341,25 @@ export default function Visualize() {
             <Controls />
           </ReactFlow>
           {hoveredEdge && (
-            <div
-              style={{
-                position: "fixed",
-                top: cursorPos.y + 10,
-                left: cursorPos.x + 10,
-                background: "#222",
-                color: "#fff",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                pointerEvents: "none",
-                zIndex: 1000,
-                boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-              }}
-            >
+            <div style={{
+              position: "fixed",
+              top: cursorPos.y + 10,
+              left: cursorPos.x + 10,
+              background: "#222",
+              color: "#fff",
+              padding: "8px 12px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              pointerEvents: "none",
+              zIndex: 1000,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            }}>
               <div><strong>🚛 Truck Type:</strong> {hoveredEdge.data?.truckType}</div>
               <div><strong>🛻 No. of Trucks:</strong> {hoveredEdge.data?.numTrucks}</div>
               <div><strong>📏 Distance:</strong> {hoveredEdge.label}</div>
               <div><strong>🌿 Emissions:</strong> {hoveredEdge.data?.emissions} kg CO₂</div>
             </div>
           )}
-
-
         </div>
       </div>
     </>

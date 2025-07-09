@@ -13,7 +13,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const handleSimulation = () => {
-    navigate('/Visualize');
+    navigate('/Simulation');
   }
 
   const handleIncoming = () => {
@@ -25,6 +25,9 @@ export default function Dashboard() {
   }
   
   useEffect(() => {
+    localStorage.clear();
+
+
     fetch("http://localhost:5000/api/shipments", {
       method: "GET",
       credentials: "include", 
