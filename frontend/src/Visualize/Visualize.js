@@ -5,7 +5,7 @@ import "leaflet/dist/leaflet.css";
 import ReactFlow, { Background, Controls } from "reactflow";
 import "reactflow/dist/style.css";
 import debounce from "lodash/debounce";
-import { useNavigate } from "react-router-dom";
+import { useNavigate ,useLocation } from "react-router-dom";
 import { getDistance } from "geolib";
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -16,6 +16,11 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function Visualize() {
+
+  const location = useLocation();
+  const [latitude, setLatitude] = useState(null);
+  const [longitude, setLongitude] = useState(null);
+
   const [fromCoords, setFromCoords] = useState([]);
   const [toCoordsList, setToCoordsList] = useState([]);
   const [nodes, setNodes] = useState([]);
@@ -24,7 +29,7 @@ export default function Visualize() {
   const [edgesForNextPage, setEdgesForNextPage] = useState([]);
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const climatiqApiKey = "<climatiq_api>"; //must include API => Climatiq's API requires authentication and restricts CORS,
+  const climatiqApiKey = "<climatiq_api>"; // must include API => Climatiq's API requires authentication and restricts CORS,
   //  so when you fetch from your React app (frontend), the browser blocks it. 
 
 
@@ -42,37 +47,78 @@ export default function Visualize() {
 
 
 
-  const getCoords = async (place) => {
-    const apiKey = "<my_api_key>"; // Replace with your key
-    const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
-    const result = await response.json();
-    if (result.results && result.results.length > 0) {
-      return result.results[0].geometry;
-    }
-    return null;
-  };
+  // const getCoords = async (place) => {
+  //   const apiKey = "<my_api_key>"; // Replace with your key
+  //   const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
+  //   const result = await response.json();
+  //   if (result.results && result.results.length > 0) {
+  //     return result.results[0].geometry;
+  //   }
+  //   return null;
+  // };
 
+  // useEffect(() => {
+  //   const fetchCoords = async () => {
+  //     const from = await getCoords("Mumbai");
+  //     const toPlaces = ["Chennai", "Bangalore", "Hyderabad"];
+  //     const toCoords = await Promise.all(toPlaces.map(getCoords));
+  //     setFromCoords(from);
+  //     setToCoordsList(
+  //       toCoords.map((coord, idx) => ({
+  //         ...coord,
+  //         label: toPlaces[idx],
+  //       }))
+  //     );
+  //   };
+  //   fetchCoords();
+  // }, []);
   useEffect(() => {
+  const storedLatitude = localStorage.getItem("destinationLatitude");
+  const storedLongitude = localStorage.getItem("destinationLongitude");
+
+  if (storedLatitude && storedLongitude) {
+    const lat = parseFloat(storedLatitude);
+    const lng = parseFloat(storedLongitude);
+
+    setLatitude(lat);
+    setLongitude(lng);
+
     const fetchCoords = async () => {
-      const from = await getCoords("Mumbai");
-      const toPlaces = ["Chennai", "Bangalore", "Hyderabad"];
-      const toCoords = await Promise.all(toPlaces.map(getCoords));
-      setFromCoords(from);
-      setToCoordsList(
-        toCoords.map((coord, idx) => ({
-          ...coord,
-          label: toPlaces[idx],
-        }))
-      );
+      try {
+        alert(lat + " " + lng);
+        const response = await fetch('http://localhost:5000/api/warehouse', {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setFromCoords({ lat: data.latitude, lng: data.longitude, label: "Warehouse" });
+
+          if (typeof lat === "number" && !isNaN(lat) && typeof lng === "number" && !isNaN(lng)) {
+            setToCoordsList([{ lat: lat, lng: lng, label: "Destination" }]);
+          } else {
+            alert("Invalid destination latitude or longitude");
+            setToCoordsList([]);
+          }
+        } else {
+          console.error("Failed to load warehouse data from the backend");
+        }
+      } catch (error) {
+        console.error("Error retrieving profile data:", error);
+      }
     };
+
     fetchCoords();
-  }, []);
+  }
+}, []);
+
 
   function FlowOverlay() {
     const map = useMap();
 
     const updateNodePositions = async () => {
-      if (!map || !fromCoords || toCoordsList.length === 0) return;
+      if (!map || !fromCoords.lat || !fromCoords.lng || toCoordsList.length === 0) return;
 
       const OFFSET_Y = 40;
       const fromPoint = map.latLngToContainerPoint([

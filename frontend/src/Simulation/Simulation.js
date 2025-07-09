@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { use, useState } from "react";
 import Navbar from "../Navbar/Navbar";
 import "./Simulation.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Simulation() {
   const [truckType, setTruckType] = useState("large");
@@ -12,10 +12,45 @@ export default function Simulation() {
     count: "",
   });
 
-  const handleChange = (e) => {
+  const [locations, setLocations] = useState([]);
+  const [latitude, setLatitude] = useState(null);
+  const [longitude,setLongitude] = useState(null);
+  const navigate =useNavigate();
+
+  const handleChange = async (e) => {
+    const {name , value}=e.target;
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if(name==="to" && value.trim()!==""){
+      try{
+        const res=await fetch(`http://localhost:5000/api/location?q=${value}`,{
+          method:'GET',
+          credentials: 'include'
+        });
+        const data=await res.json();
+        if(res.ok){
+          setLocations(data);
+        }
+        else{
+          alert(data.error || "Location not found");
+        }
+      }catch(error){
+        console.error("Error fetching location:",error);
+        alert("Failed to fetch location",error);
+      }
+    }else if(name==="to"){
+      setLocations([]);
+    }
   };
 
+  const handleNavigate = () => {
+  if (latitude !== null && longitude !== null) {
+    localStorage.setItem("destinationLatitude", latitude);
+    localStorage.setItem("destinationLongitude", longitude);
+    navigate("/Visualize");
+  } else {
+    alert("Please select a valid destination to visualize.");
+  }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -44,7 +79,7 @@ export default function Simulation() {
   return (
     <>
       <div className="page-container">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleNavigate}>
           <div className="Simulation-container">
             <h2 style={{ textAlign: "center" }}>Map It Before You Move It!</h2>
 
@@ -58,6 +93,26 @@ export default function Simulation() {
               onChange={handleChange}
               required
             />
+            {locations.length > 0 && (
+              <ul className="location-list">
+                {locations.map((location, index) => (
+                  <li
+                    key={index}
+                    onClick={() => {
+                      setFormData({ ...formData, to: location.name });
+                      setLatitude(location.latitude);
+                      setLongitude(location.longitude);
+                      alert(location.latitude + " " + location.longitude);
+                      setLocations([]);
+                    }}
+                    className="location-item"
+                  >
+                    {location.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+
 
             <label htmlFor="mode">MODE:</label>
             <input
@@ -94,8 +149,8 @@ export default function Simulation() {
             />
             
             {/* Made changes Temporarily (need to change the visualize button to type submit and also redirect it to maps at the same time) */}
-            <button>
-              <Link to="/Visualize" className="submit-btn">VISUALIZE</Link>
+            <button className="submit-btn">
+              VISUALIZE
             </button>
           </div>
         </form>

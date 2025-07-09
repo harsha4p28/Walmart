@@ -38,8 +38,8 @@ export default function Profile() {
           setEmail(data.email);
           setName(data.name);
           setPhno(data.phno);
-      } else {
-          console.error("Failed to load profile data from the backend");
+      }else {
+           console.error("Failed to load profile data from the backend");
       }
     }catch (error){
       console.error("Error retrieving profile data:", error);

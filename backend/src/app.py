@@ -24,7 +24,7 @@ except Exception as e:
 
 app.config['SECRET_KEY'] = 'evjfkjhyaiewul'  
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]  
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=45)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
 app.config["JWT_COOKIE_SECURE"] = False
 app.config["JWT_COOKIE_SAMESITE"] = "Lax"
@@ -160,6 +160,57 @@ def ensure_warehouse_for_user(username):
     access.save()
 
     return warehouse.id
+
+
+@app.route('/api/location',methods=["GET"])
+@jwt_required()
+def get_location():
+    try:
+        username=get_jwt_identity()
+        query=request.args.get('q','')
+        if not query:
+            return jsonify([])
+        destinations= Warehouse.objects(name__icontains=query).only('name','location')
+        return jsonify([{
+            "name":destination.name,
+            "latitude":destination.location.latitude,
+            "longitude":destination.location.longitude
+            } for destination in destinations])
+    except Exception as e:
+        return jsonify({"error":str(e)}),500
+    
+@app.route('/api/warehouse', methods=["GET"])
+@jwt_required()
+def get_own_warehouse_details():
+    try:
+        username = get_jwt_identity()
+        access = Employee.objects(user_username=username).first()
+        if not access:
+            raise Exception("User entry not found")
+        
+        if not access.warehouse_id:
+            return jsonify({"error": "No warehouse found"}), 400
+        
+        warehouse = access.warehouse_id.fetch()
+        if not warehouse:
+            return jsonify({"error": "Warehouse not found"}), 404
+        
+        if not warehouse.location:
+            return jsonify({"error": "Warehouse location not found"}), 404
+        
+        
+
+        latitude = warehouse.location.latitude
+        longitude = warehouse.location.longitude
+        print(f"Warehouse location: lat={latitude}, long={longitude}")
+        return jsonify({
+            "latitude": latitude,
+            "longitude": longitude
+        })
+
+    except Exception as e:
+        print(f"Error in /api/warehouse: {str(e)}")  # log error for debugging
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/register',methods=["POST","OPTIONS"])
 def register():
