@@ -85,7 +85,6 @@ export default function Visualize() {
 
     const fetchCoords = async () => {
       try {
-        alert(lat + " " + lng);
         const response = await fetch('http://localhost:5000/api/warehouse', {
           method: 'GET',
           credentials: 'include',
@@ -112,6 +111,38 @@ export default function Visualize() {
     fetchCoords();
   }
 }, []);
+
+  const handleLock= async ()=>{
+
+    try{
+      const simulationData = {
+        to: localStorage.getItem("to"),
+        mode: localStorage.getItem("mode"),
+        model: localStorage.getItem("model"),
+        count: localStorage.getItem("count"),
+      };
+      if (!simulationData.to ) {
+        alert("Simulation data is incomplete. Please fill out the form again.");
+        return;
+      }
+      const response = await fetch("http://localhost:5000/api/addSimulation",{
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          credentials: 'include',
+          body: JSON.stringify(simulationData)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert("Simulation data successfully saved!");
+        console.log("Saved:", data);
+      } else {
+        alert(data.error || "Failed to save simulation data.");
+      }
+    }catch (error) {
+      console.error("Error sending simulation data:", error);
+      alert("An error occurred while saving the simulation.");
+    }
+  };
 
 
   function FlowOverlay() {
@@ -255,8 +286,12 @@ export default function Visualize() {
         }}
       >
         Flow View
-      </button>
+      </button>      
       <div style={{ height: "90vh", width: "100%", position: "relative" }}>
+        <button 
+        className="lock-button"
+        onClick={handleLock}
+        >Lock this Route</button>
         <MapContainer
           center={[15.63, 77.31]}
           zoom={6}

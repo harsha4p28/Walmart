@@ -46,6 +46,10 @@ export default function Simulation() {
   if (latitude !== null && longitude !== null) {
     localStorage.setItem("destinationLatitude", latitude);
     localStorage.setItem("destinationLongitude", longitude);
+    localStorage.setItem("to", formData.to);
+    localStorage.setItem("mode", formData.mode);
+    localStorage.setItem("model", truckType);
+    localStorage.setItem("count", formData.count);
     navigate("/Visualize");
   } else {
     alert("Please select a valid destination to visualize.");
@@ -102,7 +106,6 @@ export default function Simulation() {
                       setFormData({ ...formData, to: location.name });
                       setLatitude(location.latitude);
                       setLongitude(location.longitude);
-                      alert(location.latitude + " " + location.longitude);
                       setLocations([]);
                     }}
                     className="location-item"

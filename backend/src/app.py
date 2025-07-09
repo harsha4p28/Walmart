@@ -5,6 +5,7 @@ from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntFi
 from mongoengine.connection import get_connection
 import bcrypt
 import os
+import uuid
 from datetime import datetime
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -86,7 +87,9 @@ class Shipment(Document):
     shipment_id = StringField(required=True, unique=True)
     destination_store_id = StringField()
     products = EmbeddedDocumentListField(ProductItem)
-    vehicle_id = StringField()
+    vehicle_mode = StringField()
+    vehicle_count = IntField()
+    vehicle_model = StringField()
     status = StringField(choices=["pending", "in_transit", "delivered"])
     eta = DateTimeField()
     meta = {'collection': 'shipments'}
@@ -199,7 +202,6 @@ def get_own_warehouse_details():
             return jsonify({"error": "Warehouse location not found"}), 404
         
         
-
         latitude = warehouse.location.latitude
         longitude = warehouse.location.longitude
         print(f"Warehouse location: lat={latitude}, long={longitude}")
@@ -211,6 +213,71 @@ def get_own_warehouse_details():
     except Exception as e:
         print(f"Error in /api/warehouse: {str(e)}")  # log error for debugging
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/addSimulation',methods=["POST","OPTIONS"])
+@jwt_required()
+def add_simulation():
+    try:
+        if request.method == 'OPTIONS':
+            return '', 200
+        data=request.get_json()
+        if not data:
+            return jsonify({"error":"no data provided"}),400
+        
+        shipment_id = str(uuid.uuid4())
+        to = data.get("to")
+        mode = data.get("mode")
+        model = data.get("model")
+        count = data.get("count")
+        eta = datetime.strptime(data.get("eta"), "%Y-%m-%dT%H:%M:%S") if data.get("eta") else None
+        status = "pending"
+        product_data = data.get("products", [])
+
+        if not all([to, mode, model, count]):
+            return jsonify({"error": "Incomplete simulation data"}), 400
+        
+        username = get_jwt_identity()
+        access = Employee.objects(user_username=username).first()
+        if not access:
+            raise Exception("User entry not found")
+        
+        if not access.warehouse_id:
+            return jsonify({"error": "No warehouse found"}), 400
+        
+        warehouse = access.warehouse_id.fetch()
+        if not warehouse:
+            return jsonify({"error": "Warehouse not found"}), 404
+        
+        destination_warehouse= Warehouse.objects(name=to).first()
+
+        products = [ProductItem(**item) for item in product_data]
+
+        shipment = Shipment(
+            shipment_id=shipment_id,
+            destination_store_id = str(destination_warehouse.id),
+            products=products,
+            vehicle_mode=mode,
+            vehicle_count=count,
+            vehicle_model=model,
+            status=status,
+            eta=eta
+        )
+        shipment.save()
+
+        warehouse.current_shipments.append(shipment)
+        warehouse.last_updated = datetime.utcnow
+        warehouse.save()
+
+        destination_warehouse.current_shipments.append(shipment)
+        destination_warehouse.last_updated = datetime.utcnow
+        destination_warehouse.save()
+
+        return jsonify({"message": "Shipment added and linked to warehouse", "shipment_id": shipment_id}), 201
+
+    except Exception as e:
+        print(f"Error adding shipment: {str(e)}")
+        return jsonify({"error": "Server error occurred"}), 500
+
 
 @app.route('/api/register',methods=["POST","OPTIONS"])
 def register():
