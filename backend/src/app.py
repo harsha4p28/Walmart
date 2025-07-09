@@ -3,6 +3,7 @@ from datetime import timedelta
 from flask_cors import CORS, cross_origin
 from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField,DateTimeField,FloatField, connect , fields,EmbeddedDocumentListField,ReferenceField,ListField,EmbeddedDocumentField,LazyReferenceField
 from mongoengine.connection import get_connection
+from mongoengine.queryset.visitor import Q
 import bcrypt
 import os
 import uuid
@@ -277,6 +278,56 @@ def add_simulation():
     except Exception as e:
         print(f"Error adding shipment: {str(e)}")
         return jsonify({"error": "Server error occurred"}), 500
+
+@app.route('/api/shipments', methods=["GET"])
+@jwt_required()
+def shipments():
+    try:
+        username = get_jwt_identity()
+        access = Employee.objects(user_username=username).first()
+        if not access or not access.warehouse_id:
+            return jsonify({"error": "Warehouse not found for user"}), 404
+
+        current_warehouse: Warehouse = access.warehouse_id.fetch()
+        current_id = current_warehouse.id
+
+        all_shipments = Shipment.objects(
+            Q(destination_store_id=current_id) |
+            Q(id__in=[s.id for s in current_warehouse.current_shipments])
+        )
+
+        incoming = []
+        outgoing = []
+
+        for ship in all_shipments:
+            if ship.destination_store_id == current_id:
+                incoming.append({
+                    "shipment_id": ship.shipment_id,
+                    "from_warehouse": current_warehouse.name,
+                    "mode": ship.vehicle_mode,
+                    "count": ship.vehicle_count,
+                    "status": ship.status,
+                    "eta": ship.eta and ship.eta.isoformat()
+                })
+            else:
+                dest = Warehouse.objects(id=ship.destination_store_id).first()
+                outgoing.append({
+                    "shipment_id": ship.shipment_id,
+                    "to_warehouse": dest.name if dest else "Unknown",
+                    "mode": ship.vehicle_mode,
+                    "count": ship.vehicle_count,
+                    "status": ship.status,
+                    "eta": ship.eta and ship.eta.isoformat()
+                })
+
+        return jsonify({
+            "incoming": incoming,
+            "outgoing": outgoing
+        }), 200
+
+    except Exception as e:
+        print(f"Error in shipments endpoint: {e}")
+        return jsonify({"error": "Server error"}), 500
 
 
 @app.route('/api/register',methods=["POST","OPTIONS"])

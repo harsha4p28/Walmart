@@ -25,16 +25,25 @@ export default function Dashboard() {
   }
   
   useEffect(() => {
-    fetch("http://localhost:5000/api/shipments")
-    .then((res) => res.json())
-    .then((data) => {
-        const inList = data.filter((entry) => entry.to === currentLocation);
-        const outList = data.filter((entry) => entry.from === currentLocation);
-        setIncoming(inList);
-        setOutgoing(outList);
+    fetch("http://localhost:5000/api/shipments", {
+      method: "GET",
+      credentials: "include", 
     })
-    .catch((err) => console.error("Shipping error:", err));
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to fetch shipments");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setIncoming(data.incoming || []);
+        setOutgoing(data.outgoing || []);
+      })
+      .catch((err) => {
+        console.error("Error fetching shipments:", err);
+      });
   }, []);
+
   return (
     <>
       <div className="page-container">
@@ -55,7 +64,7 @@ export default function Dashboard() {
               <ul className="notify-list">
                 {incoming.length === 0 ? <li>No incoming shipments</li> : incoming.map((item, index) => (
                   <li key={index}>
-                    <label>{index + 1}. From: {item.from}</label>
+                    <label>{index + 1}. From: {item.from_warehouse}</label>
                   </li>
                 ))}
               </ul>
@@ -67,7 +76,7 @@ export default function Dashboard() {
               <ul className="notify-list">
                 {outgoing.length === 0 ? <li>No outgoing shipments</li> : outgoing.map((item, index) => (
                   <li key={index}>
-                    <label>{index + 1}. To: {item.to}</label>
+                    <label>{index + 1}. To: {item.to_warehouse}</label>
                   </li>
                 ))}
               </ul>
