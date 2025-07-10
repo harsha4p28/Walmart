@@ -13,6 +13,7 @@ import Visualize from './Visualize/Visualize';
 import Reactflow from './Reactflow/Reactflow';
 import Incoming from './Incoming/Incoming';
 import Outgoing from './Outgoing/Outgoing';
+import Fullmap from './Fullmap/Fullmap';
 
 function App() {
   const [userLoggedin, setUserLoggedin] = useState(false);
@@ -69,6 +70,7 @@ function App() {
         <Route path="/Reactflow" element={<Reactflow />} />
         <Route path="/Incoming" element={<Incoming />} />
         <Route path="/Outgoing" element={<Outgoing />} />
+        <Route path="/Fullmap" element={<Fullmap />} />
       </Routes>
     </Router>
   );

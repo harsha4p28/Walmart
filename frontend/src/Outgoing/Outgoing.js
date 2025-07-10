@@ -8,6 +8,7 @@ import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
 import { getDistance } from "geolib";
 
+// Fix for marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
@@ -22,13 +23,9 @@ export default function Outgoing() {
   const [edges, setEdges] = useState([]);
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
-  const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
-    const emissionFactors = { small: 0.14, medium: 0.21, large: 0.35, electric: 0.05 };
-    return distanceKm * emissionFactors[truckType] * numTrucks;
-  };
-
+  // Fetch warehouse and shipment data
   useEffect(() => {
     const savedFrom = localStorage.getItem("outgoingFromCoords");
     const savedTo = localStorage.getItem("outgoingToCoordsList");
@@ -40,9 +37,9 @@ export default function Outgoing() {
       const fetchAll = async () => {
         try {
           const warehouseRes = await fetch("http://localhost:5000/api/warehouse", {
-            method: "GET", credentials: "include",
+            method: "GET",
+            credentials: "include",
           });
-
           const warehouseData = await warehouseRes.json();
           const warehouseCoords = {
             lat: warehouseData.latitude,
@@ -53,9 +50,9 @@ export default function Outgoing() {
           localStorage.setItem("outgoingFromCoords", JSON.stringify(warehouseCoords));
 
           const shipmentsRes = await fetch("http://localhost:5000/api/shipments", {
-            method: "GET", credentials: "include",
+            method: "GET",
+            credentials: "include",
           });
-
           const shipmentsData = await shipmentsRes.json();
 
           const coordsList = shipmentsData.outgoing.map((shipment) => ({
@@ -64,11 +61,11 @@ export default function Outgoing() {
             label: shipment.to_warehouse,
             mode: shipment.mode,
             count: shipment.count,
+            emissions: shipment.emissions, 
           }));
 
           setToCoordsList(coordsList);
           localStorage.setItem("outgoingToCoordsList", JSON.stringify(coordsList));
-
         } catch (err) {
           console.error("Error fetching outgoing data:", err);
         }
@@ -87,26 +84,29 @@ export default function Outgoing() {
       const OFFSET_Y = 40;
       const fromPoint = map.latLngToContainerPoint([fromCoords.lat, fromCoords.lng]);
 
-      const newNodes = [{
-        id: "from",
-        position: { x: fromPoint.x, y: fromPoint.y - OFFSET_Y },
-        data: { label: "From: Warehouse" },
-        type: "default",
-        style: { width: 120, height: 35 },
-      }];
+      const newNodes = [
+        {
+          id: "from",
+          position: { x: fromPoint.x, y: fromPoint.y - OFFSET_Y },
+          data: { label: "From: Warehouse" },
+          type: "default",
+          style: { width: 120, height: 35 },
+        },
+      ];
 
       const newEdges = [];
 
-      const emissionPromises = toCoordsList.map(async (toCoord, idx) => {
+      toCoordsList.forEach((toCoord, idx) => {
         const toPoint = map.latLngToContainerPoint([toCoord.lat, toCoord.lng]);
         const toId = `to-${idx}`;
 
-        const distanceInKm = getDistance(
-          { latitude: fromCoords.lat, longitude: fromCoords.lng },
-          { latitude: toCoord.lat, longitude: toCoord.lng }
-        ) / 1000;
+        const distanceInKm =
+          getDistance(
+            { latitude: fromCoords.lat, longitude: fromCoords.lng },
+            { latitude: toCoord.lat, longitude: toCoord.lng }
+          ) / 1000;
 
-        const emissions = await fetchEmissions(distanceInKm, toCoord.mode, parseInt(toCoord.count));
+        const emissions = toCoord.emissions ?? 0; 
 
         let strokeColor = "#2ecc71";
         if (emissions > 800) strokeColor = "#e67e22";
@@ -132,12 +132,11 @@ export default function Outgoing() {
           data: {
             truckType: toCoord.mode,
             numTrucks: toCoord.count,
-            emissions: emissions.toFixed(2),
+            emissions: emissions,
           },
         });
       });
 
-      await Promise.all(emissionPromises);
       setNodes(newNodes);
       setEdges(newEdges);
       localStorage.setItem("outgoingNodes", JSON.stringify(newNodes));
@@ -158,6 +157,7 @@ export default function Outgoing() {
     return null;
   }
 
+  // Load previously saved nodes/edges
   useEffect(() => {
     const savedNodes = localStorage.getItem("outgoingNodes");
     const savedEdges = localStorage.getItem("outgoingEdges");
@@ -167,39 +167,86 @@ export default function Outgoing() {
     }
   }, []);
 
+  // const routeReactFlow = () =>{
+  //   navigate("/reactflow", {
+  //     state: {
+  //       nodes: nodes,
+  //       edges: edges,
+  //       backTo: "/Outgoing"
+  //     },
+  //   });
+  // }
+  
+
   return (
     <div style={{ height: "90vh", width: "100%", position: "relative" }}>
-      <div style={{
-        position: "absolute", top: "10px", right: "10px", zIndex: 999,
-        display: "flex", flexDirection: "column", gap: "10px",
-      }}>
-        <button onClick={() => window.location.reload()} style={{ padding: "10px", background: "#2ecc71", color: "white", borderRadius: "6px" }}>
+      <div
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          zIndex: 999,
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+        }}
+      >
+        <button
+          onClick={() => window.location.reload()}
+          style={{ padding: "10px", background: "#2ecc71", color: "white", borderRadius: "6px" }}
+        >
           Refresh Map
         </button>
+        {/* <button
+          onClick={routeReactFlow}
+          style={{
+            padding: "10px 15px",
+            background: "#3498db",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+          }}
+        >
+          Flow View
+        </button> */}
       </div>
 
-      <MapContainer center={[15.63, 77.31]} zoom={6} style={{ height: "100%", width: "100%", zIndex: 1 }}>
+      <MapContainer center={[39, 34]} zoom={3} style={{ height: "100%", width: "100%", zIndex: 1 }}>
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {fromCoords && (
           <Marker position={[fromCoords.lat, fromCoords.lng]}>
-            <Popup><strong>From: Warehouse</strong></Popup>
+            <Popup>
+              <strong>From: Warehouse</strong>
+            </Popup>
           </Marker>
         )}
         {toCoordsList.map((coord, idx) => (
           <Marker key={idx} position={[coord.lat, coord.lng]}>
-            <Popup><strong>{coord.label}</strong></Popup>
+            <Popup>
+              <strong>{coord.label}</strong>
+            </Popup>
           </Marker>
         ))}
         <FlowOverlay />
       </MapContainer>
 
-      <div style={{
-        position: "absolute", top: 0, left: 0, height: "100%", width: "100%",
-        overflow: "hidden", pointerEvents: "none", zIndex: 2
-      }}>
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          height: "100%",
+          width: "100%",
+          overflow: "hidden",
+          pointerEvents: "none",
+          zIndex: 2,
+        }}
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -215,16 +262,33 @@ export default function Outgoing() {
           <Controls />
         </ReactFlow>
         {hoveredEdge && (
-          <div style={{
-            position: "fixed", top: cursorPos.y + 10, left: cursorPos.x + 10,
-            background: "#222", color: "#fff", padding: "8px 12px", borderRadius: "6px",
-            fontSize: "12px", pointerEvents: "none", zIndex: 1000,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-          }}>
-            <div><strong>🚛 Truck Type:</strong> {hoveredEdge.data?.truckType}</div>
-            <div><strong>🛻 No. of Trucks:</strong> {hoveredEdge.data?.numTrucks}</div>
-            <div><strong>📏 Distance:</strong> {hoveredEdge.label}</div>
-            <div><strong>🌿 Emissions:</strong> {hoveredEdge.data?.emissions} kg CO₂</div>
+          <div
+            style={{
+              position: "fixed",
+              top: cursorPos.y + 10,
+              left: cursorPos.x + 10,
+              background: "#222",
+              color: "#fff",
+              padding: "8px 12px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              pointerEvents: "none",
+              zIndex: 1000,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div>
+              <strong>🚛 Truck Type:</strong> {hoveredEdge.data?.truckType}
+            </div>
+            <div>
+              <strong>🛻 No. of Trucks:</strong> {hoveredEdge.data?.numTrucks}
+            </div>
+            <div>
+              <strong>📏 Distance:</strong> {hoveredEdge.label}
+            </div>
+            <div>
+              <strong>🌿 Emissions:</strong> {hoveredEdge.data?.emissions} kg CO₂
+            </div>
           </div>
         )}
       </div>

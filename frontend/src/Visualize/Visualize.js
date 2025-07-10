@@ -41,16 +41,7 @@ if (!formData) {
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [distanceInKm, setDistanceInKm] = useState(null);
-
-  const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
-    const emissionFactors = {
-      small: 0.14,
-      medium: 0.21,
-      large: 0.35,
-      electric: 0.05,
-    };
-    return distanceKm * emissionFactors[truckType] * numTrucks;
-  };
+  const [emissionsByIndex, setEmissionsByIndex] = useState({});
 
   useEffect(() => {
 
@@ -109,7 +100,7 @@ if (!formData) {
   }, []);
 
   useEffect(() => {
-  const fetchData = async () => {
+  const fetchEmissionsData = async () => {
     const savedFormData = JSON.parse(localStorage.getItem("formData") || "{}");
 
     if (!savedFormData.mode || !savedFormData.model || !savedFormData.count || !savedFormData.weight) {
@@ -117,32 +108,47 @@ if (!formData) {
       return;
     }
 
-    try {
-      const response = await fetch("http://localhost:5000/api/optimal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          mode: savedFormData.mode,
-          model: savedFormData.model,
-          distance: distanceInKm,
-          count: savedFormData.count,
-          weight: savedFormData.weight,
-        }),
-      });
+    const emissionsData = {};
 
-      const data = await response.json();
+    for (let i = 0; i < toCoordsList.length; i++) {
+      const toCoord = toCoordsList[i];
 
-      console.log("/api/optimal response:", data);
-    } catch (e) {
-      console.error("Error sending /api/optimal request:", e);
+      const computedDistance = getDistance(
+        { latitude: fromCoords.lat, longitude: fromCoords.lng },
+        { latitude: toCoord.lat, longitude: toCoord.lng }
+      ) / 1000;
+
+      try {
+        const response = await fetch("http://localhost:5000/api/optimal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            mode: savedFormData.mode,
+            model: savedFormData.model,
+            distance: computedDistance,
+            count: savedFormData.count,
+            weight: savedFormData.weight,
+          }),
+        });
+
+        const data = await response.json();
+        emissionsData[i] = Math.round(data.co2e_per_trip * 100) / 100;
+
+        console.log(`Emissions for toCoord ${i}:`, emissionsData[i]);
+      } catch (e) {
+        console.error(`Error fetching emissions for toCoord ${i}:`, e);
+      }
     }
-    };
 
-    if (distanceInKm) {
-      fetchData();
-    }
-  }, [distanceInKm]);
+    setEmissionsByIndex(emissionsData);
+  };
+
+  if (fromCoords.lat && toCoordsList.length > 0) {
+    fetchEmissionsData();
+  }
+}, [fromCoords, toCoordsList]);
+
 
 
   const handleLock = async () => {
@@ -152,12 +158,22 @@ if (!formData) {
       return;
     }
 
+    const emissionsValue = emissionsByIndex[0];
+
+    if (emissionsValue === undefined || emissionsValue === null) {
+      alert("Emissions data not ready yet. Please wait a moment and try again.");
+      return;
+    }
+
     const simulationData = {
       to: formData.to,
       mode: formData.mode,
       model: formData.model,
       count: formData.count,
+      emissions: emissionsValue,
     };
+
+    console.log("Sending simulation data:", simulationData); // ✅ Debug print
 
     const response = await fetch("http://localhost:5000/api/addSimulation", {
       method: "POST",
@@ -187,7 +203,6 @@ if (!formData) {
     alert("An error occurred while saving the simulation.");
   }
 };
-
 
   function FlowOverlay() {
     const map = useMap();
@@ -224,7 +239,8 @@ if (!formData) {
         setDistanceInKm(computedDistance); 
 
 
-        const emissions = await fetchEmissions(computedDistance, truckType, numTrucks);
+        const emissions = emissionsByIndex[idx] ?? 0;
+
 
         let strokeColor = "#2ecc71";
         if (emissions > 800) strokeColor = "#e67e22";
@@ -255,7 +271,7 @@ if (!formData) {
           data: {
             truckType,
             numTrucks,
-            emissions: emissions.toFixed(2),
+            emissions: Math.round(emissions * 100) / 100,
           },
         });
       });
@@ -286,6 +302,8 @@ if (!formData) {
     return null;
   }
 
+  
+
   const navigate = useNavigate();
 
   const routeReactFlow = () => {
@@ -304,7 +322,7 @@ if (!formData) {
     <>
       <div style={{ height: "90vh", width: "100%", position: "relative" }}>
         <div style={{ position: "relative", width: "100%", height: "90vh" }}>
-        <MapContainer center={[15.63, 77.31]} zoom={6} style={{ height: "100%", width: "100%", zIndex: 1 }}>
+        <MapContainer center={[39, 34]} zoom={3} style={{ height: "100%", width: "100%", zIndex: 1 }}>
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

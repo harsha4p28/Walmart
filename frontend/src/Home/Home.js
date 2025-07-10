@@ -7,6 +7,10 @@ import { useNavigate } from "react-router-dom";
 export default function Home() {
   const navigate = useNavigate();
 
+  const routeRegister = () => {
+    navigate('/Register');
+  }
+
   useEffect(() => {
     if (localStorage.getItem("isLoggedIn") === "true") {
       navigate("/Dashboard");
@@ -19,7 +23,7 @@ export default function Home() {
         <div className="home-container">
             <h1>Welcome to the Walmart Simulation Platform</h1>
             <p>Simulate operations, reduce emissions, and collaborate with managers.</p>
-            <button><Link to="/Register" className="link">Login/Register</Link></button>
+            <button onClick={routeRegister}>Login/Register</button>
         </div>
         <footer className="footer"> 
             <p>© 2025 Walmart Hackathon Project. All trademarks belong to their respective owners.</p>

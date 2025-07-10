@@ -66,6 +66,7 @@ export default function Simulation() {
 
   
   useEffect(() => {
+    localStorage.clear();
     if (formData.mode && !formData.model) {
       
       const defaultModels = modeModels[formData.mode];

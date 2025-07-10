@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import ReactFlow, { Background, Controls } from "reactflow";
 import "reactflow/dist/style.css";
 import debounce from "lodash/debounce";
+import { useNavigate } from "react-router-dom";
 import { getDistance } from "geolib";
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -21,11 +22,7 @@ export default function Incoming() {
   const [edges, setEdges] = useState([]);
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-
-  const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
-    const emissionFactors = { small: 0.14, medium: 0.21, large: 0.35, electric: 0.05 };
-    return distanceKm * emissionFactors[truckType] * numTrucks;
-  };
+  //  const navigate = useNavigate();
 
   useEffect(() => {
     const savedTo = localStorage.getItem("incomingToCoords");
@@ -61,7 +58,8 @@ export default function Incoming() {
             lng: shipment.lng,
             label: shipment.from_warehouse,
             mode: shipment.mode,
-            count: shipment.count
+            count: shipment.count,
+            emissions: shipment.emissions,
           }));
 
           setFromCoordsList(coordsList);
@@ -105,7 +103,7 @@ export default function Incoming() {
           { latitude: toCoords.lat, longitude: toCoords.lng }
         ) / 1000;
 
-        const emissions = await fetchEmissions(distanceInKm, fromCoord.mode, parseInt(fromCoord.count));
+        const emissions = fromCoord.emissions ?? 0;
 
         let strokeColor = "#2ecc71";
         if (emissions > 800) strokeColor = "#e67e22";
@@ -133,12 +131,11 @@ export default function Incoming() {
           data: {
             truckType: fromCoord.mode,
             numTrucks: fromCoord.count,
-            emissions: emissions.toFixed(2),
+            emissions: emissions,
           },
         });
       });
 
-      await Promise.all(emissionPromises);
       setNodes(newNodes);
       setEdges(newEdges);
       localStorage.setItem("incomingNodes", JSON.stringify(newNodes));
@@ -168,9 +165,52 @@ export default function Incoming() {
     }
   }, []);
 
+  //  const routeReactFlow = () =>{
+  //   navigate("/reactflow", {
+  //     state: {
+  //       nodes: nodes,
+  //       edges: edges,
+  //       backTo: "/Incoming"
+  //     },
+  //   });
+  // }
+
+
   return (
-    <div style={{ height: "90vh", width: "100%", position: "relative" }}>
-      <MapContainer center={[15.63, 77.31]} zoom={6} style={{ height: "100%", width: "100%", zIndex: 1 }}>
+      <div style={{ height: "90vh", width: "100%", position: "relative" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "10px",
+            zIndex: 999,
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
+        >
+          <button
+            onClick={() => window.location.reload()}
+            style={{ padding: "10px", background: "#2ecc71", color: "white", borderRadius: "6px" }}
+          >
+            Refresh Map
+          </button>
+          {/* <button
+            onClick={routeReactFlow}
+            style={{
+              padding: "10px 15px",
+              background: "#3498db",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            }}
+          >
+            Flow View
+          </button> */}
+      </div>
+      <MapContainer center={[39, 34]} zoom={3} style={{ height: "100%", width: "100%", zIndex: 1 }}>
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

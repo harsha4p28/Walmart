@@ -23,6 +23,10 @@ export default function Dashboard() {
   const handleOutgoing = () => {
     navigate('/Outgoing');
   }
+
+  const handleFullmap = () => {
+    navigate('/Fullmap');
+  }
   
   useEffect(() => {
     localStorage.clear();
@@ -58,7 +62,7 @@ export default function Dashboard() {
                   <FontAwesomeIcon icon={faPlus} /> New Simulation
                 </button>
 
-                <button className="full-map">Full Map</button>
+                <button onClick={handleFullmap}>Full Map</button>
             </div>
         </div>
         <div className="lower-part">

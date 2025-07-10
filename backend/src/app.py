@@ -92,6 +92,7 @@ class Shipment(Document):
     products = EmbeddedDocumentListField(ProductItem)
     vehicle_mode = StringField()
     vehicle_count = IntField()
+    emissions = FloatField()
     vehicle_model = StringField()
     status = StringField(choices=["pending", "in_transit", "delivered"])
     eta = DateTimeField()
@@ -302,6 +303,7 @@ def add_simulation():
         mode = data.get("mode")
         model = data.get("model")
         count = data.get("count")
+        emissions = data.get("emissions")
         eta = datetime.strptime(data.get("eta"), "%Y-%m-%dT%H:%M:%S") if data.get("eta") else None
         status = "pending"
         product_data = data.get("products", [])
@@ -331,6 +333,7 @@ def add_simulation():
             products=products,
             vehicle_mode=mode,
             vehicle_count=count,
+            emissions=emissions,
             vehicle_model=model,
             status=status,
             eta=eta
@@ -382,6 +385,7 @@ def shipments():
                     "status": ship.status,
                     "lat": source.location.latitude if source else None,
                     "lng": source.location.longitude if source else None,
+                    "emissions": ship.emissions,
                     "eta": ship.eta and ship.eta.isoformat()
                 })
             else:
@@ -394,6 +398,7 @@ def shipments():
                     "status": ship.status,
                     "lat": dest.location.latitude if dest else None,
                     "lng": dest.location.longitude if dest else None,
+                    "emissions": ship.emissions,
                     "eta": ship.eta and ship.eta.isoformat(),
                 })
         print(incoming)

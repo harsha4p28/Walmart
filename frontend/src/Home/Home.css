@@ -68,3 +68,24 @@ p{
   margin: 5px 0;
   font-size: 1rem;
 }
+
+@media screen and (max-width: 768px) {
+  .home-container {
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  p {
+    font-size: 1.1rem;
+  }
+
+  .home-container button {
+    font-size: 1rem;
+    padding: 10px 15px;
+  }
+}
