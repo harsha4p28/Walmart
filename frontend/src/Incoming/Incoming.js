@@ -22,13 +22,6 @@ export default function Incoming() {
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
-  const getCoords = async (place) => {
-    const apiKey = "6c331e8e8fc24d71ac3553394860b032";
-    const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
-    const result = await response.json();
-    return result.results?.[0]?.geometry || null;
-  };
-
   const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
     const emissionFactors = { small: 0.14, medium: 0.21, large: 0.35, electric: 0.05 };
     return distanceKm * emissionFactors[truckType] * numTrucks;
@@ -47,7 +40,6 @@ export default function Incoming() {
             method: "GET",
             credentials: "include",
           });
-
           const warehouseData = await warehouseRes.json();
           const warehouseCoords = {
             lat: warehouseData.latitude,
@@ -61,23 +53,19 @@ export default function Incoming() {
             method: "GET",
             credentials: "include",
           });
-
           const shipmentsData = await shipmentsRes.json();
 
-          const coordsPromises = shipmentsData.incoming.map(async (shipment) => {
-            const coords = await getCoords(shipment.from_warehouse);
-            return coords ? {
-              lat: coords.lat,
-              lng: coords.lng,
-              label: shipment.from_warehouse,
-              mode: shipment.mode,
-              count: shipment.count
-            } : null;
-          });
+          // ✅ Use coordinates directly
+          const coordsList = shipmentsData.incoming.map((shipment) => ({
+            lat: shipment.lat,
+            lng: shipment.lng,
+            label: shipment.from_warehouse,
+            mode: shipment.mode,
+            count: shipment.count
+          }));
 
-          const resolvedCoords = (await Promise.all(coordsPromises)).filter(Boolean);
-          setFromCoordsList(resolvedCoords);
-          localStorage.setItem("incomingFromCoordsList", JSON.stringify(resolvedCoords));
+          setFromCoordsList(coordsList);
+          localStorage.setItem("incomingFromCoordsList", JSON.stringify(coordsList));
 
         } catch (err) {
           console.error("Error fetching incoming data:", err);
@@ -89,6 +77,7 @@ export default function Incoming() {
 
   function FlowOverlay() {
     const map = useMap();
+
     const updateNodePositions = async () => {
       if (!map || !toCoords || fromCoordsList.length === 0) return;
 

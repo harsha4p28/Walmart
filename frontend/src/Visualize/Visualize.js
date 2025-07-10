@@ -40,6 +40,7 @@ if (!formData) {
   const [edgesForNextPage, setEdgesForNextPage] = useState([]);
   const [hoveredEdge, setHoveredEdge] = useState(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [distanceInKm, setDistanceInKm] = useState(null);
 
   const fetchEmissions = async (distanceKm, truckType = "large", numTrucks = 1) => {
     const emissionFactors = {
@@ -52,6 +53,7 @@ if (!formData) {
   };
 
   useEffect(() => {
+
     const savedFromCoords = localStorage.getItem("fromCoords");
     const savedToCoords = localStorage.getItem("toCoordsList");
     const savedFormData = localStorage.getItem("formData");
@@ -105,6 +107,43 @@ if (!formData) {
       fetchCoords();
     }
   }, []);
+
+  useEffect(() => {
+  const fetchData = async () => {
+    const savedFormData = JSON.parse(localStorage.getItem("formData") || "{}");
+
+    if (!savedFormData.mode || !savedFormData.model || !savedFormData.count || !savedFormData.weight) {
+      console.warn("Missing required form data for /api/optimal request.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/optimal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          mode: savedFormData.mode,
+          model: savedFormData.model,
+          distance: distanceInKm,
+          count: savedFormData.count,
+          weight: savedFormData.weight,
+        }),
+      });
+
+      const data = await response.json();
+
+      console.log("/api/optimal response:", data);
+    } catch (e) {
+      console.error("Error sending /api/optimal request:", e);
+    }
+    };
+
+    if (distanceInKm) {
+      fetchData();
+    }
+  }, [distanceInKm]);
+
 
   const handleLock = async () => {
   try {
@@ -177,13 +216,15 @@ if (!formData) {
 
         const truckType = formData.model || "large";
         const numTrucks = parseInt(formData.count) || 1;
-        const distanceInKm =
-          getDistance(
-            { latitude: fromCoords.lat, longitude: fromCoords.lng },
-            { latitude: toCoord.lat, longitude: toCoord.lng }
-          ) / 1000;
+        const computedDistance = getDistance(
+          { latitude: fromCoords.lat, longitude: fromCoords.lng },
+          { latitude: toCoord.lat, longitude: toCoord.lng }
+        ) / 1000;
 
-        const emissions = await fetchEmissions(distanceInKm, truckType, numTrucks);
+        setDistanceInKm(computedDistance); 
+
+
+        const emissions = await fetchEmissions(computedDistance, truckType, numTrucks);
 
         let strokeColor = "#2ecc71";
         if (emissions > 800) strokeColor = "#e67e22";
@@ -201,7 +242,7 @@ if (!formData) {
           id: `e-from-${toId}`,
           source: "from",
           target: toId,
-          label: `${distanceInKm.toFixed(2)} km`,
+          label: `${computedDistance.toFixed(2)} km`,
           animated: true,
           markerEnd: {
             type: "arrowclosed",

@@ -6,6 +6,7 @@ from mongoengine.connection import get_connection
 from mongoengine.queryset.visitor import Q
 import bcrypt
 import os
+import requests
 import uuid
 from datetime import datetime
 from dotenv import load_dotenv
@@ -35,6 +36,7 @@ app.config["JWT_COOKIE_HTTPONLY"] = True
 
 jwt = JWTManager(app)
 
+CLIMATIQ_API=os.getenv("CLIMATIQ_API")
 
 CORS(app, resources={
     r"/*": {
@@ -191,33 +193,62 @@ def get_location():
         return jsonify({"error":str(e)}),500
     
 
-@app.route('/api/simulate', methods=["POST"])
+@app.route('/api/optimal', methods=["POST","OPTIONS"])
 @jwt_required()
 def simulate():
     try:
+        if request.method == 'OPTIONS':
+            return '', 200
+        
         username = get_jwt_identity()
         data = request.get_json()
 
-        to = data.get("to")
         mode = data.get("mode")
-        model = data.get("model") or "large"
+        activity_id = data.get("model")
+        distance = float(data.get("distance", 0))
+        weight = float(data.get("weight", 0))  
         count = int(data.get("count", 1))
 
-        if not to or not mode or not count:
+        if not activity_id or distance==0:
             return jsonify({"error": "Missing required simulation data"}), 400
+        
+        parameters = {
+            "distance": distance,
+            "distance_unit": "km"
+        }
 
-        # Optional logging
-        print(f"[SIMULATION] User: {username}, To: {to}, Mode: {mode}, Model: {model}, Count: {count}")
+        if mode in ["truck", "ship", "train"]:
+            parameters["weight"] = weight
+            parameters["weight_unit"] = "ton"
+
+        payload = {
+            "emission_factor": {
+                "activity_id": activity_id,
+                "data_version": "23.23"
+            },
+            "parameters": parameters
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('CLIMATIQ_API')}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.post("https://beta4.api.climatiq.io/estimate", headers=headers, json=payload)
+        result = response.json()
+
+        total_emissions = result.get("co2e", 0) * count
+
+        print("Climatiq API Response:", result)
 
         return jsonify({
-            "message": "Simulation data received successfully",
-            "simulation": {
-                "to": to,
-                "mode": mode,
-                "model": model,
-                "count": count
-            }
+            "co2e_per_trip": result.get("co2e"),
+            "co2e_unit": result.get("co2e_unit"),
+            "trip_count": count,
+            "total_co2e": total_emissions,
+            "emission_factor": result.get("emission_factor")
         }), 200
+        
 
     except Exception as e:
         print(f"Error in /api/simulate: {str(e)}")
@@ -349,6 +380,8 @@ def shipments():
                     "mode": ship.vehicle_mode,
                     "count": ship.vehicle_count,
                     "status": ship.status,
+                    "lat": source.location.latitude if source else None,
+                    "lng": source.location.longitude if source else None,
                     "eta": ship.eta and ship.eta.isoformat()
                 })
             else:
@@ -359,6 +392,8 @@ def shipments():
                     "mode": ship.vehicle_mode,
                     "count": ship.vehicle_count,
                     "status": ship.status,
+                    "lat": dest.location.latitude if dest else None,
+                    "lng": dest.location.longitude if dest else None,
                     "eta": ship.eta and ship.eta.isoformat(),
                 })
         print(incoming)
