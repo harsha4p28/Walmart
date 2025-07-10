@@ -174,12 +174,19 @@ def get_location():
         query=request.args.get('q','')
         if not query:
             return jsonify([])
+        access = Employee.objects(user_username=username).first()
+        warehouse_id = access.warehouse_id.id
+        print(warehouse_id)
         destinations= Warehouse.objects(name__icontains=query).only('name','location')
-        return jsonify([{
-            "name":destination.name,
-            "latitude":destination.location.latitude,
-            "longitude":destination.location.longitude
-            } for destination in destinations])
+        filtered_destinations = [
+            {
+                "name": destination.name,
+                "latitude": destination.location.latitude,
+                "longitude": destination.location.longitude
+            }
+            for destination in destinations if destination.id != warehouse_id
+        ]
+        return jsonify(filtered_destinations)
     except Exception as e:
         return jsonify({"error":str(e)}),500
     
@@ -334,10 +341,11 @@ def shipments():
         outgoing = []
 
         for ship in all_shipments:
-            if ship.destination_store_id == current_id:
+            if str(ship.destination_store_id) == str(current_id):
+                source = Warehouse.objects(id__ne=current_id, current_shipments=ship).first()
                 incoming.append({
                     "shipment_id": ship.shipment_id,
-                    "from_warehouse": current_warehouse.name,
+                    "from_warehouse": source.name if source else "Unknown",
                     "mode": ship.vehicle_mode,
                     "count": ship.vehicle_count,
                     "status": ship.status,
@@ -353,6 +361,8 @@ def shipments():
                     "status": ship.status,
                     "eta": ship.eta and ship.eta.isoformat(),
                 })
+        print(incoming)
+        print(outgoing)
 
         return jsonify({
             "incoming": incoming,

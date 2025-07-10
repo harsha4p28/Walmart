@@ -23,7 +23,7 @@ export default function Incoming() {
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
   const getCoords = async (place) => {
-    const apiKey = "<my_api_key>";
+    const apiKey = "6c331e8e8fc24d71ac3553394860b032";
     const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(place)}&key=${apiKey}`);
     const result = await response.json();
     return result.results?.[0]?.geometry || null;
