@@ -25,7 +25,7 @@ const navigate = useNavigate();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\d{10}$/;
-    const usernameRegex = /^[a-zA-Z0-9_]{4,20}$/;
+    const usernameRegex = /^[a-zA-Z0-9_]{2,20}$/;
 
     if (!emailRegex.test(formData.email)) {
       alert("Please enter a valid email address");
@@ -38,7 +38,7 @@ const navigate = useNavigate();
     }
 
     if (!usernameRegex.test(formData.username)) {
-      alert("Username should be 4-20 characters, letters, numbers or underscores only");
+      alert("Username should be 2-20 characters, letters, numbers or underscores only");
       return;
     }
 

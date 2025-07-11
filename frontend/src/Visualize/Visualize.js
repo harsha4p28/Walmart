@@ -8,11 +8,22 @@ import debounce from "lodash/debounce";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getDistance } from "geolib";
 
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
   iconUrl: require("leaflet/dist/images/marker-icon.png"),
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+});
+
+
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 });
 
 export default function Visualize() {
@@ -42,6 +53,15 @@ if (!formData) {
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [distanceInKm, setDistanceInKm] = useState(null);
   const [emissionsByIndex, setEmissionsByIndex] = useState({});
+  const [allWarehouse, setallWarehouse] = useState([]);
+  const [via1, setVia1] = useState("");
+  const [via2, setVia2] = useState("");
+  const [locations, setLocations] = useState([]);
+  const [selectedVias, setSelectedVias] = useState({ via1: null, via2: null });
+  const [intermediateCoordsList, setIntermediateCoordsList] = useState([]);
+
+
+  
 
   useEffect(() => {
 
@@ -49,6 +69,15 @@ if (!formData) {
     const savedToCoords = localStorage.getItem("toCoordsList");
     const savedFormData = localStorage.getItem("formData");
     const savedLatLng = localStorage.getItem("toLatLng");
+     const savedWarehouseList = localStorage.getItem("allWarehouse");
+     const intermediateCoordsList = localStorage.getItem("intermediateCoordsList");
+
+  if (savedWarehouseList) {
+    setallWarehouse(JSON.parse(savedWarehouseList));
+  }
+  if (intermediateCoordsList) {
+    setIntermediateCoordsList(JSON.parse(intermediateCoordsList));
+  }
 
     if (savedFromCoords && savedToCoords && savedFormData && savedLatLng) {
       setFromCoords(JSON.parse(savedFromCoords));
@@ -73,20 +102,35 @@ if (!formData) {
             const fromCoord = {
               lat: data.latitude,
               lng: data.longitude,
-              label: "Warehouse",
+              label: data.name,
             };
             const toCoords = [
               { lat: latitude, lng: longitude, label: formData.to || "Destination" },
             ];
 
+            const filteredWarehouseList = (data.warehouse_list || []).filter((wh) => {
+            const isSameAsFrom =
+              wh.latitude === fromCoord.lat && wh.longitude === fromCoord.lng;
+            const isSameAsTo =
+              toCoords.length > 0 &&
+              wh.latitude === toCoords[0].lat &&
+              wh.longitude === toCoords[0].lng;
+            return !isSameAsFrom && !isSameAsTo;
+          });
+            
+            
+            console.log(allWarehouse)
             setFromCoords(fromCoord);
             setToCoordsList(toCoords);
+            setallWarehouse(filteredWarehouseList);
 
             // Save to localStorage
             localStorage.setItem("fromCoords", JSON.stringify(fromCoord));
             localStorage.setItem("toCoordsList", JSON.stringify(toCoords));
             localStorage.setItem("formData", JSON.stringify(formData));
             localStorage.setItem("toLatLng", JSON.stringify({ latitude, longitude }));
+            localStorage.setItem("allWarehouse", JSON.stringify(filteredWarehouseList));
+
           } else {
             console.error("Failed to load warehouse data from the backend");
           }
@@ -164,6 +208,7 @@ if (!formData) {
       alert("Emissions data not ready yet. Please wait a moment and try again.");
       return;
     }
+    const intermediateCoordsList = JSON.parse(localStorage.getItem("intermediateCoordsList") || "[]");
 
     const simulationData = {
       to: formData.to,
@@ -171,6 +216,7 @@ if (!formData) {
       model: formData.model,
       count: formData.count,
       emissions: emissionsValue,
+      intermediates: intermediateCoordsList,
     };
 
     console.log("Sending simulation data:", simulationData); // ✅ Debug print
@@ -211,36 +257,80 @@ if (!formData) {
       if (!map || !fromCoords.lat || !fromCoords.lng || toCoordsList.length === 0) return;
 
       const OFFSET_Y = 40;
-      const fromPoint = map.latLngToContainerPoint([fromCoords.lat, fromCoords.lng]);
-
-      const newNodes = [
-        {
-          id: "from",
-          position: { x: fromPoint.x, y: fromPoint.y - OFFSET_Y },
-          data: { label: `From: ${fromCoords.label}` },
-          type: "default",
-          style: { width: 120, height: 35 },
-        },
-      ];
-
+      const newNodes = [];
       const newEdges = [];
 
+      const fromPoint = map.latLngToContainerPoint([fromCoords.lat, fromCoords.lng]);
+
+      newNodes.push({
+        id: "from",
+        position: { x: fromPoint.x, y: fromPoint.y - OFFSET_Y },
+        data: { label: `From: ${fromCoords.label}` },
+        type: "default",
+        style: { width: 120, height: 35 },
+      });
+
+      // 1️⃣ Add intermediate nodes
+      let lastNodeId = "from";
+      for (let i = 0; i < intermediateCoordsList.length; i++) {
+        const via = intermediateCoordsList[i];
+        const viaId = `via-${i}`;
+        const viaPoint = map.latLngToContainerPoint([via.lat, via.lng]);
+
+        newNodes.push({
+          id: viaId,
+          position: { x: viaPoint.x, y: viaPoint.y - OFFSET_Y },
+          data: { label: `Via: ${via.label}` },
+          type: "default",
+          style: { width: 120, height: 35, backgroundColor: "#f39c12" },
+        });
+
+        const distance = getDistance(
+          {
+            latitude: fromCoords.lat,
+            longitude: fromCoords.lng,
+          },
+          {
+            latitude: via.lat,
+            longitude: via.lng,
+          }
+        ) / 1000;
+
+        newEdges.push({
+          id: `e-${lastNodeId}-${viaId}`,
+          source: lastNodeId,
+          target: viaId,
+          label: `${distance.toFixed(2)} km`,
+          animated: true,
+          style: { stroke: "#8e44ad", strokeWidth: 2 },
+          markerEnd: {
+            type: "arrowclosed",
+            width: 20,
+            height: 20,
+            color: "#000",
+          },
+        });
+
+        lastNodeId = viaId;
+      }
+
+      // 2️⃣ Add final destination nodes
       const emissionPromises = toCoordsList.map(async (toCoord, idx) => {
         const toPoint = map.latLngToContainerPoint([toCoord.lat, toCoord.lng]);
         const toId = `to-${idx}`;
-
         const truckType = formData.model || "large";
         const numTrucks = parseInt(formData.count) || 1;
-        const computedDistance = getDistance(
-          { latitude: fromCoords.lat, longitude: fromCoords.lng },
-          { latitude: toCoord.lat, longitude: toCoord.lng }
-        ) / 1000;
-
-        setDistanceInKm(computedDistance); 
-
 
         const emissions = emissionsByIndex[idx] ?? 0;
-
+        const computedDistance = getDistance(
+          intermediateCoordsList.length > 0
+            ? {
+                latitude: intermediateCoordsList[intermediateCoordsList.length - 1].lat,
+                longitude: intermediateCoordsList[intermediateCoordsList.length - 1].lng,
+              }
+            : { latitude: fromCoords.lat, longitude: fromCoords.lng },
+          { latitude: toCoord.lat, longitude: toCoord.lng }
+        ) / 1000;
 
         let strokeColor = "#2ecc71";
         if (emissions > 800) strokeColor = "#e67e22";
@@ -255,8 +345,8 @@ if (!formData) {
         });
 
         newEdges.push({
-          id: `e-from-${toId}`,
-          source: "from",
+          id: `e-${lastNodeId}-${toId}`,
+          source: lastNodeId,
           target: toId,
           label: `${computedDistance.toFixed(2)} km`,
           animated: true,
@@ -283,10 +373,10 @@ if (!formData) {
       setNodesForNextPage(newNodes);
       setEdgesForNextPage(newEdges);
 
-      // ✅ Save to localStorage
       localStorage.setItem("flowNodes", JSON.stringify(newNodes));
       localStorage.setItem("flowEdges", JSON.stringify(newEdges));
     };
+
 
     const debouncedUpdate = debounce(updateNodePositions, 100);
 
@@ -318,6 +408,98 @@ if (!formData) {
     });
   };
 
+
+  useEffect(() => {
+  const query = via1 || via2;
+  if (!query) return;
+
+  const fetchLocation = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/location?q=${query}`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setLocations(data || []);
+      } else {
+        console.error("Server error:", data.error);
+      }
+    } catch (error) {
+      console.error("Error fetching location:", error);
+      alert("Server error while fetching location");
+    }
+  };
+
+  fetchLocation();
+}, [via1, via2]);
+
+  const handleIntermediate = async (e) => {
+  e.preventDefault();
+
+  const { via1, via2 } = selectedVias;
+
+  const intermediates = [];
+
+  if (via1) {
+    intermediates.push({
+      lat: via1.latitude,
+      lng: via1.longitude,
+      label: via1.name,
+    });
+  }
+
+  if (via2) {
+    intermediates.push({
+      lat: via2.latitude,
+      lng: via2.longitude,
+      label: via2.name,
+    });
+  }
+
+
+  setIntermediateCoordsList(intermediates);
+  localStorage.setItem("intermediateCoordsList", JSON.stringify(intermediates));
+  alert("Intermediate points added to the route.");
+
+  // try {
+  //   const res = await fetch("http://localhost:5000/api/aiAnalysis", {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     credentials: "include",
+  //     body: JSON.stringify({
+  //       via1: {
+  //         name: via1.name,
+  //         latitude: via1.latitude,
+  //         longitude: via1.longitude,
+  //       },
+  //       // via2: {
+  //       //   name: via2.name,
+  //       //   latitude: via2.latitude,
+  //       //   longitude: via2.longitude,
+  //       // },
+  //     }),
+  //   });
+
+  //   const data = await res.json();
+
+  //   if (res.ok) {
+  //     alert("Intermediate locations submitted successfully!");
+  //     console.log("✔️ Submitted:", data);
+  //   } else {
+  //     alert(data.error || "Failed to submit intermediate locations.");
+  //   }
+  // } catch (error) {
+  //   console.error("❌ Submission error:", error);
+  //   alert("Server error while submitting intermediate locations.");
+  // }
+
+
+};
+
+
+
   return (
     <>
       <div style={{ height: "90vh", width: "100%", position: "relative" }}>
@@ -329,12 +511,17 @@ if (!formData) {
           />
           {fromCoords?.lat && fromCoords?.lng && (
             <Marker position={[fromCoords.lat, fromCoords.lng]}>
-              <Popup><strong>From: Mumbai</strong></Popup>
+              <Popup><strong>From: Warehouse</strong></Popup>
             </Marker>
           )}
           {toCoordsList.map((coord, idx) => (
             <Marker key={idx} position={[coord.lat, coord.lng]}>
               <Popup><strong>{coord.label}</strong></Popup>
+            </Marker>
+          ))}
+          {allWarehouse.map((coord, idx) => (
+            <Marker key={idx} position={[coord.latitude, coord.longitude]}>
+              <Popup><strong>{coord.name}</strong></Popup>
             </Marker>
           ))}
           <FlowOverlay />
@@ -377,6 +564,70 @@ if (!formData) {
             >
               Flow View
             </button>
+            <form className="via-form" onSubmit={handleIntermediate}>
+              <label>From:</label>
+              <input placeholder={fromCoords.label} disabled />
+              
+              <label>To:</label>
+              <input placeholder={formData?.to || "Destination"} disabled />
+
+              <label>Via 1:</label>
+              <input
+                type="text"
+                placeholder="Select intermediate warehouse"
+                value={via1}
+                onChange={(e) => setVia1(e.target.value)}
+                autoComplete="off"
+                className="via-input"
+              />
+              {locations.length > 0 && via1 && (
+                <ul className="location-list">
+                  {locations.map((loc, index) => (
+                    <li
+                      key={index}
+                      className="location-item"
+                      onClick={() => {
+                        setSelectedVias((prev) => ({ ...prev, via1: loc }));
+                        setVia1(loc.name);
+                        setLocations([]);
+                      }}
+                    >
+                      {loc.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <label>Via 2:</label>
+              <input
+                type="text"
+                placeholder="Select another intermediate warehouse"
+                value={via2}
+                onChange={(e) => setVia2(e.target.value)}
+                autoComplete="off"
+                className="via-input"
+              />
+              {locations.length > 0 && via2 && (
+                <ul className="location-list">
+                  {locations.map((loc, index) => (
+                    <li
+                      key={index}
+                      className="location-item"
+                      onClick={() => {
+                        setSelectedVias((prev) => ({ ...prev, via2: loc }));
+                        setVia2(loc.name);
+                        setLocations([]);
+                      }}
+                    >
+                      {loc.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <button type="submit">Submit</button>
+            </form>
+
           </div>
                   
         </div>
@@ -391,8 +642,8 @@ if (!formData) {
             onEdgeMouseEnter={(e, edge) => setHoveredEdge(edge)}
             onEdgeMouseLeave={() => setHoveredEdge(null)}
             onMouseMove={(e) => setCursorPos({ x: e.clientX, y: e.clientY })}
-            nodesDraggable={false}
-            nodesConnectable={false}
+            nodesDraggable={true}
+            nodesConnectable={true}
             zoomOnScroll={false}
             panOnDrag={false}
           >

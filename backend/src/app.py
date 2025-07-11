@@ -4,6 +4,7 @@ from flask_cors import CORS, cross_origin
 from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField,DateTimeField,FloatField, connect , fields,EmbeddedDocumentListField,ReferenceField,ListField,EmbeddedDocumentField,LazyReferenceField
 from mongoengine.connection import get_connection
 from mongoengine.queryset.visitor import Q
+import google.generativeai as genai
 import bcrypt
 import os
 import requests
@@ -37,6 +38,8 @@ app.config["JWT_COOKIE_HTTPONLY"] = True
 jwt = JWTManager(app)
 
 CLIMATIQ_API=os.getenv("CLIMATIQ_API")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("models/gemini-1.5-flash")
 
 CORS(app, resources={
     r"/*": {
@@ -86,10 +89,16 @@ class Manager(Document):
     contact = EmailField()
     meta = {'collection': 'managers'}
 
+class IntermediateShipment(EmbeddedDocument):
+    latitude = fields.FloatField(required=True)
+    longitude = fields.FloatField(required=True)
+    warehouse_name = StringField()
+
 class Shipment(Document):
     shipment_id = StringField(required=True, unique=True)
     destination_store_id = StringField()
     products = EmbeddedDocumentListField(ProductItem)
+    intermediateRoute = EmbeddedDocumentListField(IntermediateShipment)
     vehicle_mode = StringField()
     vehicle_count = IntField()
     emissions = FloatField()
@@ -279,9 +288,23 @@ def get_own_warehouse_details():
         latitude = warehouse.location.latitude
         longitude = warehouse.location.longitude
         print(f"Warehouse location: lat={latitude}, long={longitude}")
+        
+        all_warehouses = Warehouse.objects()
+
+        warehouse_list = []
+        for wh in all_warehouses:
+            warehouse_list.append({
+                "id": str(wh.id),
+                "name": wh.name,
+                "latitude": wh.location.latitude if wh.location else None,
+                "longitude": wh.location.longitude if wh.location else None
+            })
+        print(warehouse_list)
         return jsonify({
+            "name": warehouse.name,
             "latitude": latitude,
-            "longitude": longitude
+            "longitude": longitude,
+            "warehouse_list":warehouse_list,
         })
 
     except Exception as e:
@@ -304,6 +327,7 @@ def add_simulation():
         model = data.get("model")
         count = data.get("count")
         emissions = data.get("emissions")
+        intermediates = data.get("intermediates",[])
         eta = datetime.strptime(data.get("eta"), "%Y-%m-%dT%H:%M:%S") if data.get("eta") else None
         status = "pending"
         product_data = data.get("products", [])
@@ -322,37 +346,127 @@ def add_simulation():
         warehouse = access.warehouse_id.fetch()
         if not warehouse:
             return jsonify({"error": "Warehouse not found"}), 404
-        
-        destination_warehouse= Warehouse.objects(name=to).first()
+        if intermediates:
+            first_label = intermediates[0].get("label")
+            first_destination_warehouse = Warehouse.objects(name=first_label).first()
+            second_destination_warehouse = Warehouse.objects(name=to).first()
 
-        products = [ProductItem(**item) for item in product_data]
+            if not first_destination_warehouse or not second_destination_warehouse:
+                return jsonify({"error": "Intermediate or destination warehouse not found"}), 404
 
-        shipment = Shipment(
-            shipment_id=shipment_id,
-            destination_store_id = str(destination_warehouse.id),
-            products=products,
-            vehicle_mode=mode,
-            vehicle_count=count,
-            emissions=emissions,
-            vehicle_model=model,
-            status=status,
-            eta=eta
-        )
-        shipment.save()
+            products = [ProductItem(**item) for item in product_data]
 
-        warehouse.current_shipments.append(shipment)
-        warehouse.last_updated = datetime.utcnow
-        warehouse.save()
+            shipment1 = Shipment(
+                shipment_id=str(uuid.uuid4()),
+                destination_store_id=str(first_destination_warehouse.id),
+                products=products,
+                vehicle_mode=mode,
+                vehicle_count=count,
+                emissions=emissions,
+                vehicle_model=model,
+                status=status,
+                eta=eta
+            )
+            shipment1.save()
+            warehouse.current_shipments.append(shipment1)
+            warehouse.last_updated = datetime.utcnow()
+            warehouse.save()
 
-        destination_warehouse.current_shipments.append(shipment)
-        destination_warehouse.last_updated = datetime.utcnow
-        destination_warehouse.save()
+            first_destination_warehouse.current_shipments.append(shipment1)
+            first_destination_warehouse.last_updated = datetime.utcnow()
+            first_destination_warehouse.save()
+
+            shipment2 = Shipment(
+                shipment_id=str(uuid.uuid4()),
+                destination_store_id=str(second_destination_warehouse.id),
+                products=products,
+                vehicle_mode=mode,
+                vehicle_count=count,
+                emissions=emissions,
+                vehicle_model=model,
+                status=status,
+                eta=eta
+            )
+            shipment2.save()
+
+            first_destination_warehouse.current_shipments.append(shipment2)
+            first_destination_warehouse.last_updated = datetime.utcnow()
+            first_destination_warehouse.save()
+
+            second_destination_warehouse.current_shipments.append(shipment2)
+            second_destination_warehouse.last_updated = datetime.utcnow()
+            second_destination_warehouse.save()
+
+        else:
+            destination_warehouse = Warehouse.objects(name=to).first()
+            if not destination_warehouse:
+                return jsonify({"error": "Destination warehouse not found"}), 404
+
+            products = [ProductItem(**item) for item in product_data]
+
+            shipment = Shipment(
+                shipment_id=shipment_id,
+                destination_store_id=str(destination_warehouse.id),
+                products=products,
+                vehicle_mode=mode,
+                vehicle_count=count,
+                emissions=emissions,
+                vehicle_model=model,
+                status=status,
+                eta=eta
+            )
+            shipment.save()
+
+            warehouse.current_shipments.append(shipment)
+            warehouse.last_updated = datetime.utcnow()
+            warehouse.save()
+
+            destination_warehouse.current_shipments.append(shipment)
+            destination_warehouse.last_updated = datetime.utcnow()
+            destination_warehouse.save()
+
+
 
         return jsonify({"message": "Shipment added and linked to warehouse", "shipment_id": shipment_id}), 201
 
     except Exception as e:
         print(f"Error adding shipment: {str(e)}")
         return jsonify({"error": "Server error occurred"}), 500
+
+@app.route('/api/aiAnalysis',methods=["POST","OPTIONS"])
+@jwt_required
+def addIntermediate():
+    try:
+        if request.method == 'OPTIONS':
+            return '', 200
+        data=request.get_json()
+        if not data:
+            return jsonify({"error":"no data provided"}),400
+        
+        prompt = f"""
+        You are a logistics optimization assistant.
+
+        Given the following:
+        - Warehouses with their coordinates
+        - A path including source, destination, and optional intermediate nodes
+        - Carbon emissions and distance per path segment
+
+        Your job is to recommend the **most carbon-efficient and practical route** using only the available nodes.
+
+        Please return a JSON array in order of IDs like: ["A", "C", "D"]
+
+        {data}
+            """
+        
+        response = model.generate_content(prompt)
+        path_response = response.text.strip()
+
+        return jsonify({"optimal_path": path_response})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+        
+        
 
 @app.route('/api/shipments', methods=["GET"])
 @jwt_required()
