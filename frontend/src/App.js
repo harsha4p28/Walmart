@@ -1,5 +1,6 @@
 import {React ,  useEffect, useState} from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import './App.css';
 import Navbar from './Navbar/Navbar';
 import Home from './Home/Home';
 import Login from './Login/Login';
@@ -17,6 +18,7 @@ import Fullmap from './Fullmap/Fullmap';
 
 function App() {
   const [userLoggedin, setUserLoggedin] = useState(false);
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
 
@@ -49,10 +51,26 @@ function App() {
         console.error("Error checking authentication:", error);
         setUserLoggedin(false);
       } 
+      finally{
+        setLoading(false);
+      }
     };
 
     checkAuth();
   }, []);
+
+    if (loading) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center"
+      }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   return (
     <Router>

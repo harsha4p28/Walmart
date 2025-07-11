@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import './Visualize.css';
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import ReactFlow, { Background, Controls } from "reactflow";
@@ -7,6 +8,9 @@ import "reactflow/dist/style.css";
 import debounce from "lodash/debounce";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getDistance } from "geolib";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
 
 
 delete L.Icon.Default.prototype._getIconUrl;
@@ -16,15 +20,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
 
-
-const greenIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+const redIcon = new L.Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
 
 export default function Visualize() {
   const location = useLocation();
@@ -267,7 +273,7 @@ if (!formData) {
         position: { x: fromPoint.x, y: fromPoint.y - OFFSET_Y },
         data: { label: `From: ${fromCoords.label}` },
         type: "default",
-        style: { width: 120, height: 35 },
+        style: { width: 120, height: 50 },
       });
 
       // 1️⃣ Add intermediate nodes
@@ -282,7 +288,7 @@ if (!formData) {
           position: { x: viaPoint.x, y: viaPoint.y - OFFSET_Y },
           data: { label: `Via: ${via.label}` },
           type: "default",
-          style: { width: 120, height: 35, backgroundColor: "#f39c12" },
+          style: { width: 120, height: 50, backgroundColor: "#f39c12" },
         });
 
         const distance = getDistance(
@@ -341,7 +347,7 @@ if (!formData) {
           position: { x: toPoint.x, y: toPoint.y - OFFSET_Y },
           data: { label: `To: ${toCoord.label}` },
           type: "default",
-          style: { width: 120, height: 40 },
+          style: { width: 120, height: 50 },
         });
 
         newEdges.push({
@@ -410,7 +416,7 @@ if (!formData) {
 
 
   useEffect(() => {
-  const query = via1 || via2;
+  const query = via1;
   if (!query) return;
 
   const fetchLocation = async () => {
@@ -433,12 +439,12 @@ if (!formData) {
   };
 
   fetchLocation();
-}, [via1, via2]);
+}, [via1]);
 
   const handleIntermediate = async (e) => {
   e.preventDefault();
 
-  const { via1, via2 } = selectedVias;
+  const {via1} = selectedVias;
 
   const intermediates = [];
 
@@ -450,18 +456,9 @@ if (!formData) {
     });
   }
 
-  if (via2) {
-    intermediates.push({
-      lat: via2.latitude,
-      lng: via2.longitude,
-      label: via2.name,
-    });
-  }
-
 
   setIntermediateCoordsList(intermediates);
   localStorage.setItem("intermediateCoordsList", JSON.stringify(intermediates));
-  alert("Intermediate points added to the route.");
 
   // try {
   //   const res = await fetch("http://localhost:5000/api/aiAnalysis", {
@@ -511,7 +508,7 @@ if (!formData) {
           />
           {fromCoords?.lat && fromCoords?.lng && (
             <Marker position={[fromCoords.lat, fromCoords.lng]}>
-              <Popup><strong>From: Warehouse</strong></Popup>
+              <Popup><strong>From: {fromCoords.label} (warehouse)</strong></Popup>
             </Marker>
           )}
           {toCoordsList.map((coord, idx) => (
@@ -520,7 +517,7 @@ if (!formData) {
             </Marker>
           ))}
           {allWarehouse.map((coord, idx) => (
-            <Marker key={idx} position={[coord.latitude, coord.longitude]}>
+            <Marker key={idx} position={[coord.latitude, coord.longitude]} icon={redIcon}>
               <Popup><strong>{coord.name}</strong></Popup>
             </Marker>
           ))}
@@ -532,7 +529,7 @@ if (!formData) {
             top: "10px",
             right: "10px",
             display: "flex",
-            
+            flexDirection:"column",
             gap: "10px",
             zIndex: 1000,
           }}>
@@ -565,13 +562,11 @@ if (!formData) {
               Flow View
             </button>
             <form className="via-form" onSubmit={handleIntermediate}>
-              <label>From:</label>
-              <input placeholder={fromCoords.label} disabled />
+              <label style={{fontWeight:"bold"}}>From: {fromCoords.label} (warehouse)</label>
               
-              <label>To:</label>
-              <input placeholder={formData?.to || "Destination"} disabled />
+              <label style={{fontWeight:"bold"}}>To: {formData?.to || "Destination"}</label>
 
-              <label>Via 1:</label>
+              <label style={{fontWeight:"bold"}}>Via 1:{intermediateCoordsList.label}</label>
               <input
                 type="text"
                 placeholder="Select intermediate warehouse"
@@ -598,34 +593,7 @@ if (!formData) {
                 </ul>
               )}
 
-              <label>Via 2:</label>
-              <input
-                type="text"
-                placeholder="Select another intermediate warehouse"
-                value={via2}
-                onChange={(e) => setVia2(e.target.value)}
-                autoComplete="off"
-                className="via-input"
-              />
-              {locations.length > 0 && via2 && (
-                <ul className="location-list">
-                  {locations.map((loc, index) => (
-                    <li
-                      key={index}
-                      className="location-item"
-                      onClick={() => {
-                        setSelectedVias((prev) => ({ ...prev, via2: loc }));
-                        setVia2(loc.name);
-                        setLocations([]);
-                      }}
-                    >
-                      {loc.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <button type="submit">Submit</button>
+              <button className="submit-btn" type="submit">Submit</button>
             </form>
 
           </div>

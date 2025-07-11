@@ -1,0 +1,18 @@
+.via-form{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.submit-btn{
+    color: "white";
+    background-color: "#27ae60";
+    width: 50%;
+    box-shadow: "0 2px 8px rgba(0,0,0,0.2)";
+    border:"none" ;
+    border-radius:"8px" ;
+    cursor: pointer;
+}
+.via-input{
+    border: 1px solid black;
+    border-radius: 20px;
+}

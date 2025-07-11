@@ -18,6 +18,9 @@ export default function Simulation() {
   const [locations, setLocations] = useState([]);
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
+  const [errMsg, setErrMsg] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -137,7 +140,7 @@ export default function Simulation() {
 
       // const data = await res.json();
 
-      alert("Simulation started successfully!");
+      
       navigate("/Visualize", {
         state: {
           latitude,

@@ -3,6 +3,8 @@ import './Login.css';
 import login_logo from "../assets/login_logo.png";
 import { Link,useNavigate } from "react-router-dom";
 
+
+
 export default function Login({setUserLoggedin}) {
     const [formData, setFormData] = useState({
         username: "",
@@ -91,7 +93,14 @@ export default function Login({setUserLoggedin}) {
                     {success && <p style={{ color: 'green', cursor: "pointer" }}>Login Successful</p>}
 
                     <button className="submit-btn" disabled={loading}>
-                        {loading ? "Logging in..." : "Continue"}
+                        {loading ? (
+                            <>
+                            Logging in...
+                            <span className="spinner" />
+                            </>
+                        ) : (
+                            "Continue"
+                        )}
                     </button>
                     <p>Don't have an account?<span><Link to="/Register" className="register-link"> Register</Link></span></p>
                 </div>

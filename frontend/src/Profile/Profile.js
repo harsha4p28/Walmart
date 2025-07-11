@@ -8,6 +8,7 @@ export default function Profile() {
   const [email,setEmail]=useState("");
   const [name , setName]=useState("");
   const [phno , setPhno]=useState("");
+  const [loading, setLoading] = useState(true); 
 
   const navigate=useNavigate()
   const handleLogOut = async () => {
@@ -44,10 +45,26 @@ export default function Profile() {
     }catch (error){
       console.error("Error retrieving profile data:", error);
     }
+    finally{
+      setLoading(false);
+    }
   }
   useEffect(()=>{
     handleProfileData();
   },[])
+  
+  if (loading) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center"
+      }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
   
   return (
     <>
