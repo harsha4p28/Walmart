@@ -1,7 +1,7 @@
 from flask import Flask,request,jsonify
 from datetime import timedelta
 from flask_cors import CORS, cross_origin
-from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField,DateTimeField,FloatField, connect , fields,EmbeddedDocumentListField,ReferenceField,ListField,EmbeddedDocumentField,LazyReferenceField
+from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField,DateTimeField,FloatField, connect , fields,EmbeddedDocumentListField,ReferenceField,ListField,EmbeddedDocumentField,LazyReferenceField , BooleanField
 from mongoengine.connection import get_connection
 from mongoengine.queryset.visitor import Q
 import google.generativeai as genai
@@ -126,12 +126,23 @@ class SimulationHistory(Document):
     result = ReferenceField(SimulationResult)
     meta={'collection':"simulationHistory"}
 
+class WarehouseNotification(EmbeddedDocument):
+    message= StringField()
+    from_warehouse= StringField()
+    to_warehouse = StringField()
+    shipment_weight= IntField()
+    shipment_mode_count = IntField()
+    is_accepted = BooleanField(default=False)
+    related_shipments = ListField(ReferenceField(Shipment))
+    related_warehouses = ListField(ReferenceField('Warehouse'))
+
 class Warehouse(Document):
     name = StringField(required=True)
     location = EmbeddedDocumentField(Location, required=True)
     capacity = EmbeddedDocumentField(Capacity, required=True)
     inventory = EmbeddedDocumentListField(ProductItem)
     sustainability_metrics = EmbeddedDocumentField(SustainabilityMetrics)
+    notification_history = EmbeddedDocumentListField(WarehouseNotification)
     managers = ListField(ReferenceField(Manager))
     current_shipments = ListField(ReferenceField(Shipment))
     simulation_result= ListField(ReferenceField(SimulationResult))
@@ -169,7 +180,8 @@ def ensure_warehouse_for_user(username):
         location=location,
         capacity=Capacity(total_volume=10000,used_volume=0),
         inventory=[],
-        sustainability_metrics=SustainabilityMetrics()
+        sustainability_metrics=SustainabilityMetrics(),
+        notification_history = WarehouseNotification()
     )
     warehouse.save()
     access.warehouse_id=warehouse
@@ -177,6 +189,86 @@ def ensure_warehouse_for_user(username):
 
     return warehouse.id
 
+@app.route("/api/notifications", methods=["GET"])
+@jwt_required()
+def get_notifications():
+    try:
+        username = get_jwt_identity()
+        access = Employee.objects(user_username=username).first()
+        if not access or not access.warehouse_id:
+            return jsonify([])
+
+        warehouse = access.warehouse_id.fetch()
+        notifications = warehouse.notification_history or []
+
+        response = []
+        for i, note in enumerate(notifications):
+            response.append({
+                "title": f"Notification {i+1}",
+                "message": note.message,
+                "time": warehouse.last_updated.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "info" if not note.is_accepted else "accepted"
+            })
+
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/acceptNotification',methods=["POST"])
+@jwt_required()
+def accept_notification():
+    try:
+        username = get_jwt_identity()
+        data = request.get_json()
+        index = data.get("notification_index")
+
+        access = Employee.objects(user_username=username).first()
+        if not access:
+            raise Exception("User entry not found")
+
+        if not access.warehouse_id:
+            return jsonify({"error": "No warehouse found"}), 400
+
+        warehouse_accepting_notification = access.warehouse_id.fetch()
+        if not warehouse_accepting_notification:
+            return jsonify({"error": "Warehouse not found"}), 404
+        if index is None or index >= len(warehouse_accepting_notification.notification_history):
+            return jsonify({"error": "Invalid notification index"}), 400
+
+        notification = warehouse_accepting_notification.notification_history[index]
+        if notification.is_accepted:
+            return jsonify({"message": "Already accepted"}), 200
+
+        shipment1 = notification.related_shipments[0]
+        shipment2 = notification.related_shipments[1] 
+        from_wh = notification.related_warehouses[0]
+        to_wh = notification.related_warehouses[1] 
+
+        if shipment1 not in warehouse_accepting_notification.current_shipments:
+            warehouse_accepting_notification.current_shipments.append(shipment1)
+        if shipment2 not in warehouse_accepting_notification.current_shipments:
+            warehouse_accepting_notification.current_shipments.append(shipment2)
+        warehouse_accepting_notification.save()
+
+        if shipment1 not in from_wh.current_shipments:
+            from_wh.current_shipments.append(shipment1)
+            from_wh.save()
+
+        if shipment2 not in to_wh.current_shipments:
+            to_wh.current_shipments.append(shipment2)
+            to_wh.save()
+
+
+        notification.is_accepted = True
+        warehouse_accepting_notification.save()
+
+
+        return jsonify({"message": "Notification accepted and shipments linked."}), 200
+    except Exception as e:
+        print(f"Error accepting notification: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+        
+    
 
 @app.route('/api/location',methods=["GET"])
 @jwt_required()
@@ -368,13 +460,13 @@ def add_simulation():
                 eta=eta
             )
             shipment1.save()
-            warehouse.current_shipments.append(shipment1)
-            warehouse.last_updated = datetime.utcnow()
-            warehouse.save()
+            # warehouse.current_shipments.append(shipment1)
+            # warehouse.last_updated = datetime.utcnow()
+            # warehouse.save()
 
-            first_destination_warehouse.current_shipments.append(shipment1)
-            first_destination_warehouse.last_updated = datetime.utcnow()
-            first_destination_warehouse.save()
+            # first_destination_warehouse.current_shipments.append(shipment1)
+            # first_destination_warehouse.last_updated = datetime.utcnow()
+            # first_destination_warehouse.save()
 
             shipment2 = Shipment(
                 shipment_id=str(uuid.uuid4()),
@@ -389,13 +481,25 @@ def add_simulation():
             )
             shipment2.save()
 
-            first_destination_warehouse.current_shipments.append(shipment2)
-            first_destination_warehouse.last_updated = datetime.utcnow()
-            first_destination_warehouse.save()
+            # first_destination_warehouse.current_shipments.append(shipment2)
+            # first_destination_warehouse.last_updated = datetime.utcnow()
+            # first_destination_warehouse.save()
 
-            second_destination_warehouse.current_shipments.append(shipment2)
-            second_destination_warehouse.last_updated = datetime.utcnow()
-            second_destination_warehouse.save()
+            # second_destination_warehouse.current_shipments.append(shipment2)
+            # second_destination_warehouse.last_updated = datetime.utcnow()
+            # second_destination_warehouse.save()
+            notification = WarehouseNotification(
+                message=f"Shipment request from {warehouse.name} to {to} via you",
+                from_warehouse=warehouse.name,
+                to_warehouse = second_destination_warehouse.name,
+                shipment_weight=sum([item["quantity"] for item in product_data]),
+                shipment_mode_count=count,
+                is_accepted=False,
+                related_shipments=[shipment1, shipment2],
+                related_warehouses=[warehouse,second_destination_warehouse],
+            )
+            first_destination_warehouse.notification_history.append(notification)
+            first_destination_warehouse.save()
 
         else:
             destination_warehouse = Warehouse.objects(name=to).first()

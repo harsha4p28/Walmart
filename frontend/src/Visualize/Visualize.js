@@ -459,6 +459,7 @@ if (!formData) {
 
   setIntermediateCoordsList(intermediates);
   localStorage.setItem("intermediateCoordsList", JSON.stringify(intermediates));
+  };
 
   // try {
   //   const res = await fetch("http://localhost:5000/api/aiAnalysis", {
@@ -492,16 +493,18 @@ if (!formData) {
   //   alert("Server error while submitting intermediate locations.");
   // }
 
-
-};
-
-
-
   return (
     <>
       <div style={{ height: "90vh", width: "100%", position: "relative" }}>
         <div style={{ position: "relative", width: "100%", height: "90vh" }}>
-        <MapContainer center={[39, 34]} zoom={3} style={{ height: "100%", width: "100%", zIndex: 1 }}>
+          <MapContainer 
+            center={[39, 34]} 
+            zoom={3} 
+            style={{ height: "100%", width: "100%", zIndex: 1 }} 
+            worldCopyJump={false}
+            maxBounds={[[-90, -180], [90, 180]]}
+            maxBoundsViscosity={1.0}
+          >
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -577,7 +580,7 @@ if (!formData) {
               />
               {locations.length > 0 && via1 && (
                 <ul className="location-list">
-                  {locations.map((loc, index) => (
+                  {locations.filter((loc) => loc.name?.trim().toLowerCase() !== formData?.to?.trim().toLowerCase()).map((loc, index) => (
                     <li
                       key={index}
                       className="location-item"
