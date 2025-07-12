@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { getDistance } from "geolib";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import { faWarehouse } from "@fortawesome/free-solid-svg-icons";
 
 
 
@@ -65,6 +66,7 @@ if (!formData) {
   const [locations, setLocations] = useState([]);
   const [selectedVias, setSelectedVias] = useState({ via1: null, via2: null });
   const [intermediateCoordsList, setIntermediateCoordsList] = useState([]);
+  const [aiSuggestion,setAiSuggestion]=useState(null)
 
 
   
@@ -199,7 +201,36 @@ if (!formData) {
   }
 }, [fromCoords, toCoordsList]);
 
+  const handleAiAnalysis = async () =>{
+    try{
+      const all_data={
+        from_ : fromCoords,
+        to_ : toCoordsList,
+        intermediate_ : intermediateCoordsList,
+        warehouse_: allWarehouse,
+        emission_data_:emissionsByIndex,
+        form_data_:formData,
+      }
+      const res = await fetch("http://localhost:5000/api/aiAnalysis",{
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(all_data),
+      }); 
+      const data =await res.json();
+      if(res.ok){
+        // setAiSuggestion(res);
+        const { route, total_distance_km, estimated_co2_kg, explanation } = data;
+        setAiSuggestion({ route, total_distance_km, estimated_co2_kg, explanation });
 
+
+      }else{
+        alert(data.error || "Failed to get AI suggestion.");
+      }
+    }catch (error) {
+      console.error("Error sending simulation data:", error);
+    }
+  }
 
   const handleLock = async () => {
   try {
@@ -535,6 +566,7 @@ if (!formData) {
             flexDirection:"column",
             gap: "10px",
             zIndex: 1000,
+            maxWidth: "25%",
           }}>
             <button
               onClick={handleLock}
@@ -598,11 +630,24 @@ if (!formData) {
 
               <button className="submit-btn" type="submit">Submit</button>
             </form>
+            <div className="aiContainer">
+              <button onClick={handleAiAnalysis} className="submit-btn">AI ANALYSER</button>
+
+              {aiSuggestion && (
+                <div className="aiResults">
+                  <p>AI SUGGESTION: {aiSuggestion.explanation}</p>
+                  <p>ROUTE: {aiSuggestion.route.map(r => r.label).join(" → ")}</p>
+                  <p>TOTAL DISTANCE: {aiSuggestion.total_distance_km} km</p>
+                  <p>ESTIMATED CO₂: {aiSuggestion.estimated_co2_kg.toLocaleString()} kg</p>
+                </div>
+              )}
+            </div>
+
 
           </div>
                   
         </div>
-
+ 
         <div style={{
           position: "absolute", top: 0, left: 0, height: "100%", width: "100%",
           overflow: "hidden", pointerEvents: "none", zIndex: 2

@@ -1,4 +1,7 @@
 from flask import Flask,request,jsonify
+import re
+import json
+from flask_jwt_extended import jwt_required
 from datetime import timedelta
 from flask_cors import CORS, cross_origin
 from mongoengine import Document,EmbeddedDocument, StringField, EmailField,IntField,DateTimeField,FloatField, connect , fields,EmbeddedDocumentListField,ReferenceField,ListField,EmbeddedDocumentField,LazyReferenceField , BooleanField
@@ -537,39 +540,130 @@ def add_simulation():
         print(f"Error adding shipment: {str(e)}")
         return jsonify({"error": "Server error occurred"}), 500
 
-@app.route('/api/aiAnalysis',methods=["POST","OPTIONS"])
-@jwt_required
+# @app.route('/api/aiAnalysis',methods=["POST","OPTIONS"])
+# @jwt_required()
+# def addIntermediate():
+#     try:
+#         if request.method == 'OPTIONS':
+#             return '', 200
+#         data=request.get_json()
+#         if not data:
+#             return jsonify({"error":"no data provided"}),400
+#         print(data)
+#         prompt = f"""
+#         You are a logistics optimization assistant.
+
+#         Your task is to analyze the provided logistics data to determine the most environmentally efficient route from the origin to the destination. This includes evaluating the option of using intermediate warehouses to minimize total estimated CO2 emissions.
+
+#         Instructions:
+#         1. Evaluate both:
+#            - The direct route from origin to destination as specified in the user's input.
+#            - All alternative routes that pass through available intermediate warehouses.
+
+#         2. For both the direct and optimized routes:
+#            - Calculate total distance.
+#            - Estimate CO2 emissions.
+
+#         3. Compare the two routes and:
+#            - Indicate whether the optimized route provides a significant reduction in emissions.
+#            - If the optimized route is better, explain why and highlight the emission savings.
+
+#         Return the optimized route (if it differs from the direct one) in JSON format with this structure:
+#         ```json 
+#         {{
+#           "route": [
+#             {{"label": "Origin", "lat": ..., "lng": ...}},
+#             ...
+#             {{"label": "Destination", "lat": ..., "lng": ...}}
+#           ],
+#           "total_distance_km": ...,
+#           "estimated_co2_kg": ...
+#         }}
+#         ```
+
+#         Input data:
+#         {data}
+#         """
+        
+#         response = model.generate_content(prompt)
+#         path_response = response.text.strip()
+#         print(path_response) 
+
+#         return jsonify({"optimal_path": path_response})
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/aiAnalysis', methods=["POST", "OPTIONS"])
+@jwt_required()
 def addIntermediate():
     try:
         if request.method == 'OPTIONS':
             return '', 200
-        data=request.get_json()
+
+        data = request.get_json()
         if not data:
-            return jsonify({"error":"no data provided"}),400
-        
+            return jsonify({"error": "No data provided"}), 400
+
         prompt = f"""
         You are a logistics optimization assistant.
 
-        Given the following:
-        - Warehouses with their coordinates
-        - A path including source, destination, and optional intermediate nodes
-        - Carbon emissions and distance per path segment
+        Return ONLY the optimized route in this exact JSON format (no markdown or explanation):
 
-        Your job is to recommend the **most carbon-efficient and practical route** using only the available nodes.
+        {{
+        "route": [
+            {{"label": "Origin", "lat": ..., "lng": ...}},
+            ...
+            {{"label": "Destination", "lat": ..., "lng": ...}}
+        ],
+        "total_distance_km": ...,
+        "estimated_co2_kg": ...
+        }}
 
-        Please return a JSON array in order of IDs like: ["A", "C", "D"]
+        All fields must be present and use numeric values. DO NOT include markdown or extra explanation.
 
+        Input data:
         {data}
-            """
-        
+        """
+
+
         response = model.generate_content(prompt)
         path_response = response.text.strip()
 
-        return jsonify({"optimal_path": path_response})
+        # 🔍 Extract JSON from the response robustly
+        match = re.search(r"\{[\s\S]+\}", path_response)
+        if not match:
+            return jsonify({"error": "Could not extract JSON from AI response"}), 500
+
+        route_json_str = match.group()
+
+        # 💡 Fix single quotes if Gemini used them
+        route_json_str = route_json_str.replace("'", '"')
+
+        # ✅ Now safely parse
+        route_json = json.loads(route_json_str)
+
+        # Short explanation (you can calculate direct emission properly later)
+        direct_emission = 1696000
+        optimized_emission = route_json.get("estimated_co2_kg")
+        if optimized_emission is None:
+            return jsonify({
+                "error": "AI did not return emission data. Please try again or check input."
+            }), 500
+
+        diff = direct_emission - optimized_emission
+
+        explanation = f"Optimized route saves approximately {diff:,} kg CO₂ compared to direct route."
+
+        return jsonify({
+            "route": route_json["route"],
+            "total_distance_km": route_json["total_distance_km"],
+            "estimated_co2_kg": route_json["estimated_co2_kg"],
+            "explanation": explanation
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-        
         
 
 @app.route('/api/shipments', methods=["GET"])
