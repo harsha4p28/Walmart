@@ -53,8 +53,6 @@ export default function Login({setUserLoggedin}) {
         } catch (err) {
             console.error("Login error:", err);
             alert("Something went wrong. Please try later.");
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -92,15 +90,8 @@ export default function Login({setUserLoggedin}) {
                     {errMsg && <p style={{ color: 'red' }}>{errMsg}</p>}
                     {success && <p style={{ color: 'green', cursor: "pointer" }}>Login Successful</p>}
 
-                    <button className="submit-btn" disabled={loading}>
-                        {loading ? (
-                            <>
-                            Logging in...
-                            <span className="spinner" />
-                            </>
-                        ) : (
-                            "Continue"
-                        )}
+                    <button className="submit-btn">
+                        logging in
                     </button>
                     <p>Don't have an account?<span><Link to="/Register" className="register-link"> Register</Link></span></p>
                 </div>

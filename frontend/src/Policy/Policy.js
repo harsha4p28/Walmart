@@ -1,5 +1,3 @@
-import React from "react";
-import Navbar from "../Navbar/Navbar";
 import "./Policy.css";
 
 export default function Policy() {

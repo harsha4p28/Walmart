@@ -8,11 +8,7 @@ import "reactflow/dist/style.css";
 import debounce from "lodash/debounce";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getDistance } from "geolib";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { faWarehouse } from "@fortawesome/free-solid-svg-icons";
-
-
+import { toast } from "react-toastify";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -268,8 +264,9 @@ if (!formData) {
     const data = await response.json();
 
     if (response.ok) {
-      alert("Simulation data successfully saved!");
+      toast.success("Simulation data successfully saved!");
       console.log("Saved:", data);
+      navigate("/");
 
       // ✅ Clear localStorage after locking the route
       localStorage.removeItem("fromCoords");
@@ -278,6 +275,8 @@ if (!formData) {
       localStorage.removeItem("toLatLng");
       localStorage.removeItem("flowNodes");
       localStorage.removeItem("flowEdges");
+
+      
     } else {
       alert(data.error || "Failed to save simulation data.");
     }

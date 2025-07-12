@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
-  MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { useNavigate, useLocation } from "react-router-dom";

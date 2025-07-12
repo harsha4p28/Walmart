@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react"; 
-import Navbar from "../Navbar/Navbar";
 import "./Simulation.css";
 import { useNavigate } from "react-router-dom";
-import { getDistance } from "geolib";
-
+import { toast } from "react-toastify";
 
 export default function Simulation() {
 
@@ -18,9 +16,7 @@ export default function Simulation() {
   const [locations, setLocations] = useState([]);
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
-  const [errMsg, setErrMsg] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
+  
 
   const navigate = useNavigate();
 
@@ -105,6 +101,7 @@ export default function Simulation() {
         const data = await res.json();
 
         if (res.ok) {
+          
           setLocations(data || []);
         } else {
           console.error("Server error:", data.error);
@@ -140,7 +137,7 @@ export default function Simulation() {
 
       // const data = await res.json();
 
-      
+      toast.success("Simulation started successfully!");
       navigate("/Visualize", {
         state: {
           latitude,

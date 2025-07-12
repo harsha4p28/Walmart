@@ -5,7 +5,6 @@ import "leaflet/dist/leaflet.css";
 import ReactFlow, { Background, Controls } from "reactflow";
 import "reactflow/dist/style.css";
 import debounce from "lodash/debounce";
-import { useNavigate } from "react-router-dom";
 import { getDistance } from "geolib";
 
 delete L.Icon.Default.prototype._getIconUrl;
