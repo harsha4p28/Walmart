@@ -1,5 +1,5 @@
 
-# Walmart Simulation Platform “Proactive Supply Chain Optimizer"
+# SmartSim - Walmart Simulation Platform “Proactive Supply Chain Optimizer"
 
 ## Problem
 
